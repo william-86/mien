@@ -1,0 +1,1108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Mien — Your face first. Your fate next.</title>
+<meta name="description" content="Mien reads your face through the 3,000-year-old Chinese art of physiognomy — then your birth chart through BaZi. Frames processed on your device. Never uploaded.">
+<meta property="og:title" content="Mien — Your face first. Your fate next.">
+<meta property="og:description" content="Chinese face reading, decoded. Scan your face (never uploaded), cast your BaZi chart, share your element card.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://mien.app">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#0A0B0E">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='10' fill='%23C8452C'/%3E%3Ctext x='32' y='45' font-size='36' text-anchor='middle' fill='%23fff' font-family='Songti SC,STSong,serif'%3E%E9%9D%A2%3C/text%3E%3C/svg%3E">
+<style>
+/* ============================================================
+   MIEN · Eastern Mystique Minimal · deployable MVP
+   tokens → base → components → views → scan states → motion → responsive
+   ============================================================ */
+:root{
+  --bg:#0A0B0E;
+  --surface:#121419;
+  --raised:#1A1D24;
+  --ink:#EDEAE3;
+  --muted:#9AA0A8;
+  --faint:#5C6169;
+  --line:#2A2E36;
+  --seal:#C8452C;
+  --seal-hi:#D9573A;
+  --serif:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,"Songti SC",serif;
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB",sans-serif;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  --songti:"Songti SC","STSong","SimSun",serif;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+html{-webkit-text-size-adjust:100%;scroll-behavior:smooth;}
+body{
+  background:var(--bg);
+  color:var(--ink);
+  font-family:var(--sans);
+  font-size:15px;
+  line-height:1.7;
+  letter-spacing:.01em;
+  -webkit-font-smoothing:antialiased;
+  min-height:100vh;
+}
+::selection{background:var(--seal);color:#fff;}
+a{color:inherit;text-decoration:none;}
+button{font:inherit;cursor:pointer;border:0;background:none;color:inherit;}
+input{font:inherit;}
+:focus-visible{outline:1.5px solid var(--seal-hi);outline-offset:3px;border-radius:2px;}
+
+.eyebrow{font-size:11px;letter-spacing:.32em;text-transform:uppercase;color:var(--muted);font-weight:600;}
+.display{font-family:var(--serif);font-style:italic;font-weight:700;letter-spacing:-.015em;line-height:1.08;}
+.zh-totem{font-family:var(--songti);font-weight:400;user-select:none;}
+
+.shell{max-width:520px;margin:0 auto;padding:0 22px 90px;}
+@media(min-width:900px){.shell{max-width:860px;padding-bottom:60px;}}
+
+.nav{display:flex;align-items:center;justify-content:space-between;padding:22px 0 20px;border-bottom:1px solid var(--line);}
+.brand{font-family:var(--serif);font-style:italic;font-weight:700;font-size:24px;}
+.brand .seal-dot{color:var(--seal);}
+.nav-right{display:flex;align-items:center;gap:18px;font-size:12px;color:var(--muted);letter-spacing:.14em;text-transform:uppercase;}
+.nav-right a:hover{color:var(--ink);}
+
+.steps{
+  display:flex;gap:8px;align-items:center;justify-content:center;
+  padding:16px 0 6px;font-family:var(--mono);font-size:10.5px;
+  letter-spacing:.18em;color:var(--faint);text-transform:uppercase;
+}
+.steps span{padding:3px 10px;border:1px solid transparent;border-radius:100px;transition:all .3s;}
+.steps span.on{color:var(--seal-hi);border-color:rgba(200,69,44,.5);}
+.steps i{color:var(--line);font-style:normal;}
+
+.view{display:none;animation:rise .32s ease both;}
+.view.active{display:block;}
+@keyframes rise{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:none;}}
+
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:10px;
+  font-size:13px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;
+  padding:15px 28px;border-radius:2px;transition:all .22s ease;
+}
+.btn-primary{background:var(--seal);color:#fff;}
+.btn-primary:hover{background:var(--seal-hi);transform:translateY(-1px);}
+.btn-primary:disabled{opacity:.55;cursor:wait;transform:none;}
+.btn-ghost{border:1px solid var(--line);color:var(--ink);}
+.btn-ghost:hover{border-color:var(--muted);background:var(--surface);}
+.btn-block{width:100%;}
+
+/* ---------- landing ---------- */
+.hero{padding:58px 0 44px;position:relative;}
+.hero .zh-totem{position:absolute;right:-4px;top:36px;writing-mode:vertical-rl;font-size:30px;color:rgba(154,160,168,.28);letter-spacing:.5em;}
+.hero h1{font-size:clamp(38px,9vw,58px);margin:18px 0 20px;max-width:11em;}
+.hero h1 em{font-style:italic;color:var(--seal-hi);}
+.hero p.lede{color:var(--muted);font-size:15.5px;max-width:34em;margin-bottom:30px;}
+.hero .cta-note{font-size:11.5px;color:var(--faint);letter-spacing:.12em;text-transform:uppercase;margin-top:14px;font-family:var(--mono);}
+
+.section{padding:34px 0;border-top:1px solid var(--line);}
+.section-head{display:flex;align-items:baseline;gap:14px;margin-bottom:22px;}
+.section-head .num{font-family:var(--mono);font-size:11px;color:var(--seal-hi);letter-spacing:.1em;}
+.section-head h2{font-family:var(--serif);font-style:italic;font-size:22px;font-weight:700;}
+
+.engines{display:grid;gap:14px;}
+@media(min-width:900px){.engines{grid-template-columns:1fr 1fr 1fr;gap:18px;}}
+.engine{background:var(--surface);border:1px solid var(--line);border-radius:3px;padding:22px 20px;transition:border-color .25s;}
+.engine:hover{border-color:#3A4049;}
+.engine .glyph{font-family:var(--songti);font-size:26px;color:var(--seal-hi);display:inline-block;border:1px solid rgba(200,69,44,.4);border-radius:50%;width:46px;height:46px;line-height:46px;text-align:center;margin-bottom:14px;}
+.engine b{display:block;font-family:var(--serif);font-style:italic;font-size:16.5px;margin-bottom:2px;}
+.engine .sub{font-family:var(--mono);font-size:10px;letter-spacing:.22em;text-transform:uppercase;color:var(--faint);display:block;margin-bottom:10px;}
+.engine p{font-size:13px;color:var(--muted);line-height:1.75;}
+
+.privacy-strip{display:flex;gap:16px;align-items:flex-start;border:1px dashed var(--line);border-radius:3px;padding:18px 20px;}
+.privacy-strip .lock{font-family:var(--mono);font-size:11px;color:var(--seal-hi);border:1px solid rgba(200,69,44,.4);border-radius:2px;padding:2px 7px;white-space:nowrap;margin-top:2px;letter-spacing:.1em;}
+.privacy-strip p{font-size:13.5px;color:var(--muted);}
+.privacy-strip b{color:var(--ink);font-weight:600;}
+
+.pricing{display:flex;flex-wrap:wrap;gap:20px;align-items:center;justify-content:space-between;background:var(--surface);border:1px solid var(--line);border-radius:3px;padding:22px 24px;}
+.pricing .price{font-family:var(--serif);font-style:italic;font-size:34px;font-weight:700;}
+.pricing .price small{font-family:var(--sans);font-style:normal;font-size:12px;color:var(--faint);letter-spacing:.08em;}
+.pricing .desc{font-size:12.5px;color:var(--muted);max-width:24em;}
+
+.capture{display:flex;gap:10px;margin-top:14px;}
+.capture input{flex:1;background:var(--bg);border:1px solid var(--line);border-radius:2px;color:var(--ink);padding:13px 16px;font-size:14px;}
+.capture input::placeholder{color:var(--faint);}
+.capture input:focus{border-color:var(--muted);outline:none;}
+.capture-ok{display:none;gap:8px;align-items:center;font-size:13px;color:var(--seal-hi);padding:13px 0;letter-spacing:.04em;}
+
+footer.site{border-top:1px solid var(--line);padding:26px 0 8px;font-size:11.5px;color:var(--faint);letter-spacing:.04em;}
+footer.site .row{display:flex;justify-content:space-between;gap:14px;flex-wrap:wrap;}
+footer.site a{border-bottom:1px solid var(--line);}
+footer.site a:hover{color:var(--ink);}
+
+/* ---------- view head ---------- */
+.view-head{padding:34px 0 8px;text-align:center;}
+.view-head h2{font-family:var(--serif);font-style:italic;font-size:30px;font-weight:700;margin:10px 0 6px;}
+.view-head p{color:var(--muted);font-size:14px;max-width:30em;margin:0 auto;}
+
+/* ============================================================
+   SCAN · five states: channels → live → processing → result
+   ============================================================ */
+.scan-stage{position:relative;padding:26px 0 10px;}
+
+/* channels */
+.channels{display:grid;gap:12px;max-width:340px;margin:8px auto 0;}
+.channel{
+  background:var(--surface);border:1px solid var(--line);border-radius:3px;
+  padding:22px 20px;text-align:left;transition:border-color .2s,transform .2s;width:100%;
+}
+.channel:hover{border-color:#3A4049;transform:translateY(-1px);}
+.channel .ch-t{font-family:var(--serif);font-style:italic;font-size:18px;font-weight:700;display:flex;align-items:center;gap:10px;}
+.channel .ch-t .zh{font-family:var(--songti);font-style:normal;color:var(--seal-hi);font-size:20px;}
+.channel small{display:block;color:var(--faint);font-size:12px;margin-top:6px;letter-spacing:.03em;}
+.channel.primary{border-color:rgba(200,69,44,.5);}
+.channel.primary:hover{border-color:var(--seal);}
+.scan-fineprint{
+  text-align:center;font-family:var(--mono);font-size:10px;color:var(--faint);
+  letter-spacing:.14em;text-transform:uppercase;margin-top:18px;
+}
+
+/* live camera */
+.scan-live{display:none;max-width:340px;margin:0 auto;}
+.scan-stage.state-live .scan-live{display:block;}
+.scan-stage.state-live .channels{display:none;}
+.scan-frame{
+  position:relative;width:236px;height:300px;margin:0 auto;overflow:hidden;
+  border:1px solid var(--line);border-radius:50% 50% 46% 46%/44% 44% 56% 56%;
+  background:#000;transition:border-color .4s;
+}
+.scan-frame.has-face{border-color:rgba(200,69,44,.75);animation:breathe 1.6s ease-in-out infinite;}
+@keyframes breathe{0%,100%{box-shadow:0 0 0 0 rgba(200,69,44,0);}50%{box-shadow:0 0 26px 0 rgba(200,69,44,.28);}}
+.scan-frame video,.scan-frame canvas{width:100%;height:100%;object-fit:cover;transform:scaleX(-1);}
+.scan-frame canvas{transform:none;}
+.scan-status{
+  text-align:center;font-family:var(--mono);font-size:11px;letter-spacing:.18em;
+  text-transform:uppercase;color:var(--seal-hi);margin-top:18px;min-height:18px;
+}
+.scan-actions{max-width:320px;margin:16px auto 0;display:grid;gap:10px;}
+
+/* processing */
+.scan-processing{display:none;max-width:300px;margin:0 auto;position:relative;}
+.scan-stage.state-processing .scan-processing{display:block;}
+.scan-stage.state-processing .scan-live,
+.scan-stage.state-processing .channels{display:none;}
+.proc-frame{position:relative;width:236px;height:300px;margin:0 auto;border:1px solid rgba(200,69,44,.55);border-radius:50% 50% 46% 46%/44% 44% 56% 56%;overflow:hidden;background:#000;}
+.proc-frame canvas{width:100%;height:100%;object-fit:cover;}
+.scan-line{
+  position:absolute;left:14px;right:14px;height:2px;
+  background:linear-gradient(90deg,transparent,var(--seal),transparent);
+  box-shadow:0 0 14px rgba(200,69,44,.55);top:12px;
+  animation:sweep 1.2s ease-in-out infinite alternate;
+}
+@keyframes sweep{from{top:12px;}to{top:calc(100% - 14px);}}
+.proc-status{text-align:center;font-family:var(--mono);font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--seal-hi);margin-top:18px;}
+
+/* result */
+.scan-result{max-width:420px;margin:26px auto 0;animation:reveal .45s ease both;}
+@keyframes reveal{from{opacity:0;transform:scale(.97);}to{opacity:1;transform:none;}}
+.face-card{background:var(--surface);border:1px solid var(--line);border-radius:3px;padding:26px 24px;text-align:center;}
+.face-card .el-char{font-family:var(--songti);font-size:54px;line-height:1;color:var(--ink);}
+.face-card .el-name{font-family:var(--serif);font-style:italic;font-size:25px;font-weight:700;margin:8px 0 2px;}
+.face-card .el-sub{font-family:var(--mono);font-size:10.5px;letter-spacing:.26em;text-transform:uppercase;color:var(--faint);margin-bottom:6px;}
+.face-card .measure{font-family:var(--mono);font-size:10px;color:var(--faint);letter-spacing:.06em;display:block;margin-bottom:16px;}
+.face-card .traits{text-align:left;border-top:1px solid var(--line);padding-top:16px;margin-top:4px;}
+.face-card .traits li{list-style:none;font-size:13.5px;color:var(--muted);padding:7px 0 7px 22px;position:relative;border-bottom:1px solid rgba(42,46,54,.6);}
+.face-card .traits li::before{content:"—";position:absolute;left:0;color:var(--seal);}
+.face-card .traits li b{color:var(--ink);font-weight:600;}
+.hook{margin-top:18px;padding:18px 20px;text-align:center;border:1px solid rgba(200,69,44,.45);border-radius:3px;background:rgba(200,69,44,.05);}
+.hook p{font-family:var(--serif);font-style:italic;font-size:15.5px;margin-bottom:14px;}
+.rescan{display:block;margin:16px auto 0;font-size:11.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--faint);border-bottom:1px solid var(--line);}
+.rescan:hover{color:var(--ink);border-color:var(--ink);}
+
+/* ---------- chart ---------- */
+.chart-form{max-width:400px;margin:26px auto 0;display:grid;gap:16px;}
+.field label{display:block;font-family:var(--mono);font-size:10.5px;letter-spacing:.22em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;}
+.field input[type="date"],.field input[type="time"],.field input[type="text"],.field input[type="email"]{
+  width:100%;background:var(--surface);border:1px solid var(--line);border-radius:2px;
+  color:var(--ink);padding:13px 15px;font-size:14.5px;transition:border-color .2s;color-scheme:dark;
+}
+.field input:focus{border-color:var(--muted);outline:none;}
+.dob-row{display:grid;grid-template-columns:1.35fr .8fr 1fr;gap:8px;}
+.dob-row select{
+  width:100%;background:var(--surface);border:1px solid var(--line);border-radius:2px;
+  color:var(--ink);padding:12px 10px;font-size:14px;transition:border-color .2s;color-scheme:dark;
+  -webkit-appearance:none;appearance:none;text-align:center;cursor:pointer;
+}
+.dob-row select:focus{border-color:var(--muted);outline:none;}
+.field .opt{display:flex;gap:9px;align-items:center;margin-top:10px;font-size:12.5px;color:var(--muted);cursor:pointer;user-select:none;}
+.field .opt input{accent-color:var(--seal);}
+.form-err{display:none;font-size:12.5px;color:var(--seal-hi);}
+.form-err.show{display:block;}
+
+.chart-result{max-width:480px;margin:30px auto 0;animation:reveal .5s ease both;}
+.pillars-note{text-align:center;font-family:var(--mono);font-size:10px;color:var(--faint);letter-spacing:.2em;text-transform:uppercase;margin-bottom:18px;}
+.pillars{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;}
+.pillar{background:var(--surface);border:1px solid var(--line);border-radius:3px;padding:16px 8px 14px;text-align:center;opacity:0;animation:rise .5s ease forwards;}
+.pillar:nth-child(1){animation-delay:.1s;}
+.pillar:nth-child(2){animation-delay:.28s;}
+.pillar:nth-child(3){animation-delay:.46s;}
+.pillar:nth-child(4){animation-delay:.64s;}
+.pillar .pos{font-family:var(--mono);font-size:9.5px;letter-spacing:.24em;color:var(--faint);text-transform:uppercase;display:block;margin-bottom:12px;}
+.pillar .gan,.pillar .zhi{font-family:var(--songti);font-size:34px;line-height:1.15;display:block;}
+.pillar .gan{color:var(--ink);}
+.pillar .zhi{color:var(--muted);margin-top:4px;}
+.pillar .py{font-family:var(--mono);font-size:9.5px;color:var(--faint);display:block;margin-top:10px;letter-spacing:.08em;}
+.pillar.is-day{border-color:rgba(200,69,44,.55);position:relative;}
+.pillar.is-day::after{content:"day master";position:absolute;top:-8px;left:50%;transform:translateX(-50%);background:var(--seal);color:#fff;font-family:var(--mono);font-size:8.5px;letter-spacing:.16em;text-transform:uppercase;padding:2px 8px;border-radius:2px;white-space:nowrap;}
+
+.daymaster{margin-top:26px;padding:26px 22px;text-align:center;border-top:1px solid var(--line);border-bottom:1px solid var(--line);}
+.daymaster .dm-label{font-family:var(--mono);font-size:10.5px;letter-spacing:.3em;color:var(--faint);text-transform:uppercase;}
+.daymaster .dm-name{font-family:var(--serif);font-style:italic;font-size:31px;font-weight:700;margin:8px 0 2px;}
+.daymaster .dm-zh{font-family:var(--songti);font-size:17px;color:var(--seal-hi);letter-spacing:.4em;}
+.daymaster p{font-size:13.5px;color:var(--muted);max-width:30em;margin:12px auto 0;}
+
+.elements{margin-top:24px;}
+.elements .el-title{font-family:var(--mono);font-size:10px;letter-spacing:.24em;color:var(--faint);text-transform:uppercase;margin-bottom:12px;}
+.el-row{display:grid;grid-template-columns:56px 1fr 20px;gap:12px;align-items:center;margin-bottom:9px;}
+.el-row .el-name{font-size:11.5px;color:var(--muted);letter-spacing:.06em;}
+.el-row .el-name i{font-family:var(--songti);font-style:normal;color:var(--faint);margin-right:6px;}
+.el-track{height:6px;background:var(--raised);border-radius:100px;overflow:hidden;}
+.el-fill{height:100%;border-radius:100px;background:var(--muted);transition:width .8s cubic-bezier(.2,.7,.3,1);}
+.el-fill.lead{background:var(--seal);}
+.el-row .el-n{font-family:var(--mono);font-size:11px;color:var(--faint);text-align:right;}
+
+.chart-meta{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-top:22px;font-family:var(--mono);font-size:9.5px;color:var(--faint);letter-spacing:.1em;text-transform:uppercase;}
+.chart-meta span{border:1px solid var(--line);border-radius:2px;padding:3px 9px;}
+
+/* ---------- share ---------- */
+.share-stage{max-width:330px;margin:26px auto 0;}
+.card-frame{
+  position:relative;aspect-ratio:9/16;border-radius:6px;
+  background:linear-gradient(175deg,#101218 0%,#0A0B0E 60%);
+  border:1px solid var(--line);overflow:hidden;padding:30px 24px;display:flex;flex-direction:column;animation:reveal .5s ease both;
+}
+.card-frame .wm{font-family:var(--serif);font-style:italic;font-weight:700;font-size:15px;color:var(--muted);}
+.card-frame .wm span{color:var(--seal);}
+.card-frame .divider{height:1px;background:var(--line);margin:18px 0;}
+.card-frame .big-el{font-family:var(--songti);font-size:96px;line-height:1;color:var(--ink);margin-top:6px;}
+.card-frame .face-line{font-family:var(--serif);font-style:italic;font-size:21px;font-weight:700;margin-top:10px;line-height:1.3;}
+.card-frame .dm-line{font-family:var(--mono);font-size:10.5px;letter-spacing:.22em;text-transform:uppercase;color:var(--muted);margin-top:8px;line-height:1.8;}
+.card-frame .seal-stamp{position:absolute;right:22px;bottom:66px;width:52px;height:52px;background:var(--seal);border-radius:3px;display:flex;align-items:center;justify-content:center;font-family:var(--songti);font-size:24px;color:#fff;transform:rotate(-4deg);box-shadow:0 4px 22px rgba(200,69,44,.35);}
+.card-frame .foot{margin-top:auto;display:flex;justify-content:space-between;align-items:flex-end;font-family:var(--mono);font-size:9.5px;letter-spacing:.2em;color:var(--faint);text-transform:uppercase;}
+.share-actions{display:grid;gap:10px;margin-top:18px;}
+.share-missing{max-width:330px;margin:26px auto 0;text-align:center;border:1px dashed var(--line);border-radius:3px;padding:24px 20px;}
+.share-missing p{font-size:13.5px;color:var(--muted);margin-bottom:14px;}
+.share-missing .links{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;}
+.link-btn{font-size:12px;letter-spacing:.12em;text-transform:uppercase;font-weight:600;color:var(--seal-hi);border-bottom:1px solid rgba(200,69,44,.4);padding-bottom:2px;}
+.link-btn:hover{color:var(--ink);border-color:var(--ink);}
+
+.toast{
+  position:fixed;left:50%;bottom:26px;transform:translateX(-50%) translateY(20px);
+  background:var(--raised);border:1px solid var(--line);border-radius:3px;padding:12px 22px;
+  font-size:12.5px;color:var(--ink);letter-spacing:.04em;opacity:0;pointer-events:none;transition:all .35s ease;z-index:60;max-width:88vw;text-align:center;
+}
+.toast.show{opacity:1;transform:translateX(-50%);}
+
+.hidden-input{position:absolute;width:1px;height:1px;opacity:0;overflow:hidden;}
+
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{animation-duration:.01ms !important;transition-duration:.01ms !important;}
+}
+@media(max-width:420px){
+  .hero .zh-totem{font-size:24px;top:26px;}
+  .pillar .gan,.pillar .zhi{font-size:30px;}
+  .card-frame .big-el{font-size:84px;}
+}
+</style>
+</head>
+<body>
+
+<div class="shell">
+
+  <!-- ================= NAV ================= -->
+  <nav class="nav">
+    <a href="#" class="brand" data-goto="landing">Mien<span class="seal-dot">.</span></a>
+    <div class="nav-right">
+      <a href="#" data-goto="landing">Home</a>
+      <a href="#" data-goto="scan">Scan</a>
+      <a href="privacy.html">Privacy</a>
+    </div>
+  </nav>
+
+  <!-- ================= VIEW 1 · LANDING ================= -->
+  <section class="view active" data-view="landing" id="view-landing">
+    <div class="hero">
+      <span class="eyebrow">Eastern astrology, beautifully decoded</span>
+      <h1 class="display">Your face first.<br><em>Your fate next.</em></h1>
+      <p class="lede">Mien reads your face through the 3,000-year-old Chinese art of physiognomy — then your birth chart through BaZi, the Four Pillars of Destiny. Two readings, one you.</p>
+      <button class="btn btn-primary" data-goto="scan">Scan your face — free</button>
+      <div class="cta-note">No sign-up · Nothing uploaded · 60 seconds</div>
+      <div class="zh-totem" aria-hidden="true">面命運</div>
+    </div>
+
+    <div class="section">
+      <div class="section-head"><span class="num">01</span><h2>How Mien reads you</h2></div>
+      <div class="engines">
+        <div class="engine">
+          <span class="glyph">面</span>
+          <b>The Face</b>
+          <span class="sub">Mien Scan · Free</span>
+          <p>A photo, never uploaded. Your features map to one of five elemental face types — the classical starting point of Chinese self-knowledge.</p>
+        </div>
+        <div class="engine">
+          <span class="glyph">命</span>
+          <b>The Chart</b>
+          <span class="sub">Mien Chart · Free</span>
+          <p>Your birth moment, cast into the Four Pillars: year, month, day, hour. At its center, your Day Master — the element that runs you.</p>
+        </div>
+        <div class="engine">
+          <span class="glyph">運</span>
+          <b>The Year</b>
+          <span class="sub">Mien Flow · $39/yr</span>
+          <p>A personal year-ahead reading, delivered at Li Chun — the solar new year. Then a gentle rhythm of guidance, every solar term.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="privacy-strip">
+        <span class="lock">PRIVACY</span>
+        <p><b>Photos are never uploaded. Birth data never leaves your device.</b> Everything is computed on your phone — no accounts required to begin, nothing stored unless you ask us to. <a href="privacy.html" style="border-bottom:1px solid var(--line);">Read the policy</a>.</p>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-head"><span class="num">02</span><h2>The Year Ahead</h2></div>
+      <div class="pricing">
+        <div>
+          <div class="price">$39<small> / YEAR</small></div>
+          <p class="desc">Your full year, decoded at Li Chun — plus guidance tuned to your chart at each of the 24 solar terms. Cancel anytime.</p>
+        </div>
+        <button class="btn btn-ghost" id="waitlist-btn">Join waitlist</button>
+      </div>
+      <div class="capture" id="waitlist-capture" style="display:none;">
+        <input type="email" id="waitlist-email" placeholder="you@somewhere.com" aria-label="Email address">
+        <button class="btn btn-primary" id="waitlist-submit">Save</button>
+      </div>
+      <div class="capture-ok" id="waitlist-ok">✦ You're on the list. We'll write before Li Chun.</div>
+    </div>
+
+    <footer class="site">
+      <div class="row">
+        <span>Mien · mien.app</span>
+        <span>For entertainment & self-discovery</span>
+      </div>
+    </footer>
+  </section>
+
+  <!-- ================= VIEW 2 · SCAN ================= -->
+  <section class="view" data-view="scan" id="view-scan">
+    <div class="steps">
+      <span class="on">01 · Face</span><i>—</i><span>02 · Chart</span><i>—</i><span>03 · Share</span>
+    </div>
+    <div class="view-head">
+      <span class="eyebrow">Mien Scan</span>
+      <h2>Let the face speak.</h2>
+      <p>In Chinese physiognomy, the face is read in three regions and five shapes. Yours holds one governing element.</p>
+    </div>
+
+    <div class="scan-stage" id="scan-stage" data-state="channels">
+      <!-- state: channels -->
+      <div class="channels" id="scan-channels">
+        <button class="channel primary" id="ch-camera">
+          <span class="ch-t"><span class="zh">面</span> Use camera</span>
+          <small>Live scan — your camera opens locally, frames never leave this device</small>
+        </button>
+        <button class="channel" id="ch-upload">
+          <span class="ch-t"><span class="zh" style="color:var(--muted)">照</span> Upload a photo</span>
+          <small>A clear front-facing photo works just as well — processed and discarded</small>
+        </button>
+        <input type="file" id="file-input" class="hidden-input" accept="image/*">
+      </div>
+
+      <!-- state: live -->
+      <div class="scan-live">
+        <div class="scan-frame" id="scan-frame">
+          <video id="scan-video" playsinline muted autoplay></video>
+        </div>
+        <div class="scan-status" id="live-status">Starting camera…</div>
+        <div class="scan-actions">
+          <button class="btn btn-ghost btn-block" id="live-cancel">Cancel</button>
+        </div>
+      </div>
+
+      <!-- state: processing -->
+      <div class="scan-processing">
+        <div class="proc-frame">
+          <canvas id="proc-canvas" width="472" height="600"></canvas>
+          <div class="scan-line" aria-hidden="true"></div>
+        </div>
+        <div class="proc-status" id="proc-status">Reading the three regions…</div>
+      </div>
+    </div>
+
+    <!-- state: result -->
+    <div class="scan-result" id="scan-result" style="display:none;">
+      <div class="face-card">
+        <div class="el-char" id="face-el-char">水</div>
+        <div class="el-name" id="face-el-name">Water-Type Face</div>
+        <div class="el-sub" id="face-el-sub">The Face · Mien Scan</div>
+        <span class="measure" id="face-measure"></span>
+        <ul class="traits" id="face-traits"></ul>
+      </div>
+      <div class="hook">
+        <p>Your face says <span id="hook-el">Water</span>.<br>What does your birth chart say?</p>
+        <button class="btn btn-primary" data-goto="chart">Read my BaZi</button>
+      </div>
+      <button class="rescan" id="rescan-btn">Scan again</button>
+    </div>
+
+    <div class="scan-fineprint">Frames processed on your device — never uploaded</div>
+  </section>
+
+  <!-- ================= VIEW 3 · CHART ================= -->
+  <section class="view" data-view="chart" id="view-chart">
+    <div class="steps">
+      <span>01 · Face</span><i>—</i><span class="on">02 · Chart</span><i>—</i><span>03 · Share</span>
+    </div>
+    <div class="view-head">
+      <span class="eyebrow">Mien Chart</span>
+      <h2>Cast your four pillars.</h2>
+      <p>BaZi translates your birth moment into four pillars of two characters each. Your Day Master is the stem of the day you arrived.</p>
+    </div>
+
+    <form class="chart-form" id="chart-form" novalidate>
+      <div class="field">
+        <label for="dob-month">Date of birth</label>
+        <div class="dob-row">
+          <select id="dob-month" aria-label="Month of birth"></select>
+          <select id="dob-day" aria-label="Day of birth"></select>
+          <select id="dob-year" aria-label="Year of birth"></select>
+        </div>
+      </div>
+      <div class="field">
+        <label for="tob">Time of birth <span style="color:var(--faint);letter-spacing:.1em;">· optional</span></label>
+        <input type="text" id="tob" inputmode="numeric" placeholder="HH:MM · 24-hour, e.g. 14:30" autocomplete="off">
+        <label class="opt"><input type="checkbox" id="no-time"> I don't know my birth time</label>
+      </div>
+      <div class="field">
+        <label for="pob">Place of birth</label>
+        <input type="text" id="pob" placeholder="City, Country" autocomplete="off">
+      </div>
+      <div class="form-err" id="chart-err">Please enter a valid date of birth.</div>
+      <button type="submit" class="btn btn-primary btn-block" id="chart-btn">Cast my chart</button>
+    </form>
+
+    <div class="chart-result" id="chart-result" style="display:none;">
+      <div class="pillars-note">The Four Pillars · <span id="pillars-date"></span></div>
+      <div class="pillars" id="pillars"></div>
+
+      <div class="daymaster">
+        <div class="dm-label">Your Day Master</div>
+        <div class="dm-name" id="dm-name">Yang Wood</div>
+        <div class="dm-zh" id="dm-zh">甲 · The Tree</div>
+        <p id="dm-desc"></p>
+      </div>
+
+      <div class="elements">
+        <div class="el-title">Five elements · this chart</div>
+        <div id="el-bars"></div>
+      </div>
+
+      <div class="chart-meta">
+        <span>demo chart</span>
+        <span id="meta-notes">li chun boundary approximated</span>
+      </div>
+
+      <div style="margin-top:26px;">
+        <div class="capture">
+          <input type="email" id="chart-email" placeholder="Save my chart — your email">
+          <button class="btn btn-primary" id="chart-save" type="button">Save</button>
+        </div>
+        <div class="capture-ok" id="chart-save-ok">✦ Chart saved. We'll keep it ready for Li Chun.</div>
+      </div>
+
+      <div style="text-align:center;margin-top:22px;">
+        <button class="btn btn-ghost" data-goto="share">Create my share card</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= VIEW 4 · SHARE ================= -->
+  <section class="view" data-view="share" id="view-share">
+    <div class="steps">
+      <span>01 · Face</span><i>—</i><span>02 · Chart</span><i>—</i><span class="on">03 · Share</span>
+    </div>
+    <div class="view-head">
+      <span class="eyebrow">Your Reading</span>
+      <h2>The card of you.</h2>
+      <p>Face and chart, sealed in one card. Made for your story.</p>
+    </div>
+
+    <div class="share-stage" id="share-full" style="display:none;">
+      <div class="card-frame">
+        <div class="wm">Mien<span>.</span></div>
+        <div class="divider"></div>
+        <div class="big-el" id="card-el-char">水</div>
+        <div class="face-line" id="card-face">Water-Type Face</div>
+        <div class="dm-line" id="card-dm">DAY MASTER · YANG WOOD — THE TREE</div>
+        <div class="seal-stamp" aria-hidden="true">命</div>
+        <div class="foot"><span>miēn · 面命運</span><span>mien.app</span></div>
+      </div>
+      <div class="share-actions">
+        <button class="btn btn-primary btn-block" id="dl-btn">Download card</button>
+        <button class="btn btn-ghost btn-block" id="sh-btn">Share to story</button>
+        <button class="btn btn-ghost btn-block" data-goto="landing">Start over</button>
+      </div>
+    </div>
+
+    <div class="share-missing" id="share-missing">
+      <p id="share-missing-msg">Your card needs a face reading and a birth chart.</p>
+      <div class="links" id="share-missing-links">
+        <a href="#" class="link-btn" data-goto="scan">Scan face</a>
+        <a href="#" class="link-btn" data-goto="chart">Cast chart</a>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ============================================================
+   MIEN · deployable MVP
+   CONFIG / attribution / nav / waitlist / scanner / physiognomy
+   chart engine (from validated prototype) / share
+   ============================================================ */
+(function(){
+"use strict";
+
+/* ---------- CONFIG (calibratable thresholds — see README-deploy.md) ---------- */
+var CONFIG = {
+  FORM_ENDPOINT: "", /* paste your Formspree endpoint, e.g. "https://formspree.io/f/xxxxxxx" — empty = local-only mode */
+  MP_CDN: "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.0.1",
+  MP_MODEL: "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task",
+  TH: {
+    lwWood: 1.42,     /* face length/width above → Wood-leaning */
+    lwRound: 1.28,    /* below → round-leaning */
+    chinJawFire: 0.42,/* chin/jaw below → Fire-leaning (pointed) */
+    jawFaceMetal: 0.86,
+    foreFaceEarth: 0.80
+  }
+};
+
+/* ---------- attribution (UTM) ---------- */
+(function captureAttribution(){
+  try{
+    var p = new URLSearchParams(location.search);
+    var found = false;
+    ["utm_source","utm_medium","utm_campaign","utm_content","utm_term","ref"].forEach(function(k){
+      var v = p.get(k);
+      if(v){ localStorage.setItem("mien_"+k, v); found = true; }
+    });
+    if(found) localStorage.setItem("mien_ts", Date.now());
+  }catch(e){}
+})();
+function getAttribution(){
+  var a = {};
+  try{
+    ["utm_source","utm_medium","utm_campaign","utm_content","utm_term","ref"].forEach(function(k){
+      var v = localStorage.getItem("mien_"+k);
+      if(v) a[k] = v;
+    });
+  }catch(e){}
+  return a;
+}
+
+/* ---------- toast ---------- */
+var toastEl = document.getElementById("toast"), toastT;
+function toast(msg){
+  toastEl.textContent = msg;
+  toastEl.classList.add("show");
+  clearTimeout(toastT);
+  toastT = setTimeout(function(){ toastEl.classList.remove("show"); }, 2600);
+}
+
+/* ---------- email submit (Formspree if configured) ---------- */
+function submitEmail(email, tag, okEl){
+  var ok = function(){ okEl.style.display = "flex"; };
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){ toast("Enter a valid email address."); return false; }
+  if(CONFIG.FORM_ENDPOINT){
+    fetch(CONFIG.FORM_ENDPOINT, {
+      method:"POST",
+      headers:{ "Content-Type":"application/json", "Accept":"application/json" },
+      body: JSON.stringify({ email: email, form: tag, attribution: getAttribution() })
+    }).then(ok).catch(function(){ ok(); /* still show success — never trap the user */ });
+  } else { ok(); }
+  return true;
+}
+
+/* ---------- navigation ---------- */
+var views = document.querySelectorAll(".view");
+var steps = { landing:null, scan:0, chart:1, share:2 };
+function goto(name){
+  for(var i=0;i<views.length;i++){
+    views[i].classList.toggle("active", views[i].getAttribute("data-view")===name);
+  }
+  document.querySelectorAll(".steps span").forEach(function(s){ s.classList.remove("on"); });
+  var v = document.getElementById("view-"+name);
+  var on = v ? v.querySelectorAll(".steps span") : [];
+  on.forEach(function(s,idx){ if(idx===steps[name]) s.classList.add("on"); });
+  if(name!=="scan") scanner.suspend();
+  window.scrollTo({top:0});
+}
+document.addEventListener("click", function(e){
+  var t = e.target.closest("[data-goto]");
+  if(t){ e.preventDefault(); goto(t.getAttribute("data-goto")); }
+});
+
+/* ---------- waitlist ---------- */
+document.getElementById("waitlist-btn").addEventListener("click", function(){
+  document.getElementById("waitlist-capture").style.display = "flex";
+  document.getElementById("waitlist-email").focus();
+});
+document.getElementById("waitlist-submit").addEventListener("click", function(){
+  if(submitEmail(document.getElementById("waitlist-email").value.trim(), "waitlist", document.getElementById("waitlist-ok"))){
+    document.getElementById("waitlist-capture").style.display="none";
+  }
+});
+
+/* ============================================================
+   PHYSIOGNOMY · landmarks → metrics → element (pure functions)
+   MediaPipe canonical indices used:
+   10 forehead-top · 152 chin-bottom · 234/454 face width (tragion)
+   172/397 jaw (gonion) · 21/251 forehead width · 176/400 chin
+   9 brow line · 2 nose base
+   ============================================================ */
+function dist(a,b){ return Math.hypot(a.x-b.x, a.y-b.y); }
+
+function measure(lm, w, h){
+  /* convert to pixel coords to normalize aspect */
+  function P(i){ return { x: lm[i].x*w, y: lm[i].y*h }; }
+  var top=P(10), chin=P(152), wL=P(234), wR=P(454),
+      jL=P(172), jR=P(397), fL=P(21), fR=P(251),
+      cL=P(176), cR=P(400), brow=P(9), noseBase=P(2);
+  var L = Math.abs(chin.y - top.y);
+  var W = dist(wL, wR);
+  var jawW = dist(jL, jR);
+  var foreW = dist(fL, fR);
+  var chinW = dist(cL, cR);
+  var up = Math.abs(brow.y - top.y);        /* 三停 upper */
+  var mid = Math.abs(noseBase.y - brow.y);  /* 三停 middle */
+  var low = Math.abs(chin.y - noseBase.y);  /* 三停 lower */
+  var tot = up+mid+low || 1;
+  return {
+    lw: L/W, jawFace: jawW/W, foreFace: foreW/W, chinJaw: chinW/jawW,
+    up: up/tot, mid: mid/tot, low: low/tot,
+    facePx: W
+  };
+}
+
+function classify(m){
+  var T = CONFIG.TH;
+  function sm(x){ return Math.max(0, Math.min(1, x)); }
+  var s = {
+    Wood:  sm((m.lw - T.lwWood) / 0.25),
+    Fire:  sm((T.chinJawFire - m.chinJaw) / 0.18),
+    Metal: sm((m.jawFace - T.jawFaceMetal) / 0.12) * (1 - sm((m.lw - 1.45) / 0.2)),
+    Earth: sm((m.foreFace - T.foreFaceEarth) / 0.10) * sm((1.32 - m.lw) / 0.18) * sm((m.jawFace - 0.80) / 0.10),
+    Water: sm((T.lwRound - m.lw) / 0.22) * (1 - sm((m.jawFace - 0.88) / 0.10))
+  };
+  var best = "Water", bestScore = -1;
+  ["Water","Metal","Earth","Fire","Wood"].forEach(function(k){
+    var score = s[k] + (k==="Water" ? 0.02 : (k==="Metal" ? 0.01 : 0)); /* tie priority */
+    if(score > bestScore){ bestScore = score; best = k; }
+  });
+  if(bestScore <= 0.001){ /* degenerate — nearest-shape fallback */
+    if(m.lw >= T.lwWood) best = "Wood";
+    else if(m.chinJaw <= T.chinJawFire) best = "Fire";
+    else if(m.lw <= T.lwRound) best = "Water";
+    else best = (m.foreFace > 0.82) ? "Earth" : "Metal";
+  }
+  var region = (m.up >= m.mid && m.up >= m.low) ? "upper" : (m.mid >= m.low ? "middle" : "lower");
+  return { element: best, region: region, scores: s };
+}
+
+var ELEMENTS = {
+  Water:{ char:"水", name:"Water-Type Face",
+    base:["<b>Round, full contours</b> — classical wisdom faces","Reads as <b>adaptable and deep</b>; energy pools, then moves","Best in flux: <b>strategy over force</b>"] },
+  Fire:{ char:"火", name:"Fire-Type Face",
+    base:["<b>Pointed features, bright eyes</b> — the classical spark","Reads as <b>passionate and quick</b>; lights a room first","Best with momentum: <b>lead, don't wait</b>"] },
+  Wood:{ char:"木", name:"Wood-Type Face",
+    base:["<b>Tall, long lines</b> — the classical growth face","Reads as <b>principled and driven</b>; grows toward light","Best with a cause: <b>purpose is fuel</b>"] },
+  Metal:{ char:"金", name:"Metal-Type Face",
+    base:["<b>Square jaw, defined bones</b> — the classical blade","Reads as <b>structured and decisive</b>; cuts clean","Best under order: <b>rules set you free</b>"] },
+  Earth:{ char:"土", name:"Earth-Type Face",
+    base:["<b>Broad, steady features</b> — the classical ground","Reads as <b>grounded and trustworthy</b>; others rest on you","Best when patient: <b>harvests come late and large</b>"] }
+};
+var REGIONS = {
+  upper:["<b>Upper region leads</b> (天庭) — early fortune, big-picture thinking"],
+  middle:["<b>Middle region leads</b> (中停) — drive, ambition, practical power"],
+  lower:["<b>Lower region leads</b> (地阁) — late-blooming fortune and resilience"]
+};
+
+/* ============================================================
+   SCANNER · MediaPipe lazy load · dual channel · fallbacks
+   ============================================================ */
+var scanner = (function(){
+  var landmarker = null, loading = null;
+  var stream = null, rafId = 0, stableCount = 0;
+  var stage = document.getElementById("scan-stage");
+  var video = document.getElementById("scan-video");
+  var frame = document.getElementById("scan-frame");
+  var liveStatus = document.getElementById("live-status");
+  var fileInput = document.getElementById("file-input");
+
+  function setState(s){ stage.setAttribute("data-state", s); stage.className = "scan-stage state-" + s; }
+
+  function ensureLoaded(){
+    if(landmarker) return Promise.resolve(landmarker);
+    if(loading) return loading;
+    loading = new Promise(function(resolve, reject){
+      import(CONFIG.MP_CDN + "/vision_bundle.mjs").then(function(m){
+        return m.FilesetResolver.forVisionTasks(CONFIG.MP_CDN + "/wasm").then(function(vision){
+          return m.FaceLandmarker.createFromOptions(vision, {
+            baseOptions:{ modelAssetPath: CONFIG.MP_MODEL, delegate:"GPU" },
+            runningMode:"VIDEO", numFaces:1
+          });
+        });
+      }).then(function(lm){ landmarker = lm; resolve(lm); })
+        .catch(function(err){ loading = null; reject(err); });
+    });
+    return loading;
+  }
+
+  /* ---- camera channel ---- */
+  function startCamera(){
+    liveStatus.textContent = "Loading the reader… (first time ~4 MB)";
+    ensureLoaded().then(function(){
+      return navigator.mediaDevices.getUserMedia({ video:{ facingMode:"user", width:{ideal:720} }, audio:false });
+    }).then(function(s){
+      stream = s;
+      video.srcObject = s;
+      setState("live");
+      stableCount = 0;
+      liveStatus.textContent = "Hold still — reading…";
+      loop();
+    }).catch(function(err){
+      if(err && (err.name==="NotAllowedError" || err.name==="PermissionDeniedError")){
+        toast("Camera blocked — no problem. Upload a photo instead.");
+      }else{
+        toast("Couldn't start the reader. Try uploading a photo.");
+      }
+      resetChannels();
+    });
+  }
+
+  function loop(){
+    rafId = requestAnimationFrame(loop);
+    if(!landmarker || video.readyState < 2) return;
+    var t;
+    try{ t = performance.now(); if(t - (loop.last||0) < 60) return; loop.last = t; }
+    catch(e){}
+    var res;
+    try{ res = landmarker.detectForVideo(video, t); }catch(e){ return; }
+    var has = res && res.faceLandmarks && res.faceLandmarks.length > 0;
+    frame.classList.toggle("has-face", !!has);
+    if(has){
+      stableCount++;
+      if(stableCount >= 3){
+        var lm = res.faceLandmarks[0];
+        var m = measure(lm, video.videoWidth, video.videoHeight);
+        if(m.facePx > 72){ finish(lm, video.videoWidth, video.videoHeight, video); return; }
+      }
+    } else { stableCount = 0; }
+  }
+
+  /* ---- upload channel ---- */
+  function uploadFile(file){
+    if(!file || !/^image\//.test(file.type)){ toast("Please choose an image file."); return; }
+    liveStatus.textContent = "";
+    toast("Reading your photo…");
+    ensureLoaded().then(function(){
+      return createImageBitmap(file);
+    }).then(function(bmp){
+      /* VIDEO-mode engine throughout — feed the still through detectForVideo */
+      var res;
+      try{ res = landmarker.detectForVideo(bmp, performance.now()); }
+      catch(e){ throw e; }
+      if(!res || !res.faceLandmarks || !res.faceLandmarks.length){
+        toast("No face detected — try a clearer, front-facing photo.");
+        resetChannels(); return;
+      }
+      var lm = res.faceLandmarks[0];
+      var m = measure(lm, bmp.width, bmp.height);
+      if(m.facePx < 40){ toast("Face too small in the photo — move closer."); resetChannels(); return; }
+      finish(lm, bmp.width, bmp.height, bmp);
+    }).catch(function(){
+      toast("Couldn't load the reader — check your connection and retry.");
+      resetChannels();
+    });
+  }
+
+  /* ---- shared finish: draw frozen frame + 三停 lines, then result ---- */
+  function finish(lm, w, h, src){
+    cancelAnimationFrame(rafId);
+    if(stream){ stream.getTracks().forEach(function(tr){ tr.stop(); }); stream = null; }
+    video.srcObject = null;
+
+    var canvas = document.getElementById("proc-canvas");
+    var ctx = canvas.getContext("2d");
+    var cw = canvas.width, ch = canvas.height;
+    ctx.save();
+    ctx.drawImage(src, 0, 0, cw, ch);
+    /* 三停 dashed guide lines (brow lm[9], nose base lm[2]) */
+    ctx.strokeStyle = "rgba(200,69,44,.85)";
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([5,5]);
+    [[9,"天庭 · 中停"],[2,"中停 · 地阁"]].forEach(function(g){
+      var y = lm[g[0]].y * ch;
+      ctx.beginPath(); ctx.moveTo(10, y); ctx.lineTo(cw-10, y); ctx.stroke();
+    });
+    ctx.restore();
+
+    setState("processing");
+    var msgs = ["Reading the three regions…","Weighing the elements…"];
+    var mi = 0;
+    document.getElementById("proc-status").textContent = msgs[0];
+    var mt = setInterval(function(){ mi=(mi+1)%msgs.length; document.getElementById("proc-status").textContent = msgs[mi]; }, 700);
+    setTimeout(function(){
+      clearInterval(mt);
+      var metrics = measure(lm, w, h);
+      var result = classify(metrics);
+      revealFace(result, metrics);
+    }, 1800);
+  }
+
+  function resetChannels(){
+    cancelAnimationFrame(rafId);
+    if(stream){ stream.getTracks().forEach(function(tr){ tr.stop(); }); stream = null; }
+    video.srcObject = null;
+    frame.classList.remove("has-face");
+    setState("channels");
+  }
+
+  /* ---- wiring ---- */
+  document.getElementById("ch-camera").addEventListener("click", startCamera);
+  document.getElementById("ch-upload").addEventListener("click", function(){ fileInput.value=""; fileInput.click(); });
+  fileInput.addEventListener("change", function(){ if(fileInput.files[0]) uploadFile(fileInput.files[0]); });
+  document.getElementById("live-cancel").addEventListener("click", resetChannels);
+  document.getElementById("rescan-btn").addEventListener("click", resetChannels);
+
+  return { suspend: resetChannels };
+})();
+
+/* ---------- reveal result ---------- */
+function revealFace(result, m){
+  state.face = result.element;
+  var el = ELEMENTS[result.element];
+  document.getElementById("face-el-char").textContent = el.char;
+  document.getElementById("face-el-name").textContent = el.name;
+  document.getElementById("hook-el").textContent = result.element;
+  document.getElementById("face-measure").textContent =
+    "L/W " + m.lw.toFixed(2) + " · jaw/W " + m.jawFace.toFixed(2) + " · " + result.region + "-led regions";
+  var traits = el.base.concat(REGIONS[result.region]);
+  document.getElementById("face-traits").innerHTML = traits.map(function(t){ return "<li>"+t+"</li>"; }).join("");
+  var r = document.getElementById("scan-result");
+  r.style.display = "block";
+  r.scrollIntoView({behavior:"smooth", block:"nearest"});
+}
+
+/* ============================================================
+   BAZI CHART ENGINE (validated in prototype: 2000-01-01 → 庚辰/戊子/戊午/戊午)
+   ============================================================ */
+var state = { face:null, chart:null };
+
+var STEMS = [
+  {c:"甲",p:"jiǎ",e:"Wood",yang:true,persona:"The Tree",desc:"Upright and unbending — you grow toward the light and rarely bend for anyone."},
+  {c:"乙",p:"yǐ",e:"Wood",yang:false,persona:"The Vine",desc:"Supple and persistent — you climb by adapting, winding gracefully around obstacles."},
+  {c:"丙",p:"bǐng",e:"Fire",yang:true,persona:"The Sun",desc:"Radiant and generous — you cannot be ignored, and you warm everything you touch."},
+  {c:"丁",p:"dīng",e:"Fire",yang:false,persona:"The Candle",desc:"Focused and quietly intense — a flame that holds steady where winds blow."},
+  {c:"戊",p:"wù",e:"Earth",yang:true,persona:"The Mountain",desc:"Immovable and dependable — others build their houses on your patience."},
+  {c:"己",p:"jǐ",e:"Earth",yang:false,persona:"The Garden",desc:"Nurturing and productive — you make things grow, quietly and constantly."},
+  {c:"庚",p:"gēng",e:"Metal",yang:true,persona:"The Blade",desc:"Sharp and reforming — you decide fast, cut clean, and forge what's next."},
+  {c:"辛",p:"xīn",e:"Metal",yang:false,persona:"The Jewel",desc:"Refined and precise — you value beauty in craft and cut light into rainbows."},
+  {c:"壬",p:"rén",e:"Water",yang:true,persona:"The Ocean",desc:"Vast and strategic — you flow around anything, and carry ships."},
+  {c:"癸",p:"guǐ",e:"Water",yang:false,persona:"The Rain",desc:"Subtle and penetrating — you nourish quietly and reach where others can't."}
+];
+var BRANCHES = [
+  {c:"子",p:"zǐ",e:"Water"},{c:"丑",p:"chǒu",e:"Earth"},{c:"寅",p:"yín",e:"Wood"},{c:"卯",p:"mǎo",e:"Wood"},
+  {c:"辰",p:"chén",e:"Earth"},{c:"巳",p:"sì",e:"Fire"},{c:"午",p:"wǔ",e:"Fire"},{c:"未",p:"wèi",e:"Earth"},
+  {c:"申",p:"shēn",e:"Metal"},{c:"酉",p:"yǒu",e:"Metal"},{c:"戌",p:"xū",e:"Earth"},{c:"亥",p:"hài",e:"Water"}
+];
+var ELEMENT_ZH = {Wood:"木",Fire:"火",Earth:"土",Metal:"金",Water:"水"};
+
+function jdn(y,m,d){
+  var a=Math.floor((14-m)/12), yy=y+4800-a, mm=m+12*a-3;
+  return d + Math.floor((153*mm+2)/5) + 365*yy + Math.floor(yy/4) - Math.floor(yy/100) + Math.floor(yy/400) - 32045;
+}
+var MONTH_SPANS = [[2,4,0],[3,6,1],[4,5,2],[5,6,3],[6,6,4],[7,7,5],[8,8,6],[9,8,7],[10,8,8],[11,7,9],[12,7,10],[1,6,11]];
+function monthBranchIdx(m,d){
+  for(var i=0;i<MONTH_SPANS.length;i++){
+    var s=MONTH_SPANS[i];
+    if(m===s[0] && d>=s[1]) return s[2];
+  }
+  if(m===1) return 10;
+  if(m===2) return 11;
+  return 11;
+}
+var TIGER_START = {0:2,5:2,1:4,6:4,2:6,7:6,3:8,8:8,4:0,9:0};
+var RAT_START = {0:0,5:0,1:2,6:2,2:4,7:4,3:6,8:6,4:8,9:8};
+
+function castChart(y,m,d,hour,min){
+  var pillars = [];
+  var yIdx = ((y-4)%60+60)%60;
+  pillars.push({gan:yIdx%10, zhi:yIdx%12});
+  var mb = monthBranchIdx(m,d);
+  var mStem = (TIGER_START[yIdx%10] + mb) % 10;
+  pillars.push({gan:mStem, zhi:(mb+2)%12});
+  var dIdx = ((jdn(y,m,d)+49)%60+60)%60;
+  pillars.push({gan:dIdx%10, zhi:dIdx%12, isDay:true});
+  if(hour!==null){
+    var hb = Math.floor((((hour+1)%24)+24)%24/2);
+    var hStem = (RAT_START[dIdx%10] + hb) % 10;
+    pillars.push({gan:hStem, zhi:hb});
+  } else { pillars.push(null); }
+  var els = {Wood:0,Fire:0,Earth:0,Metal:0,Water:0};
+  pillars.forEach(function(p){
+    if(!p) return;
+    els[STEMS[p.gan].e]++; els[BRANCHES[p.zhi].e]++;
+  });
+  return { pillars:pillars, dm:STEMS[dIdx%10], elements:els,
+    dateStr: m+"/"+d+"/"+y + (hour!==null ? " · "+String(hour).padStart(2,"0")+":"+String(min||0).padStart(2,"0") : " · hour unknown") };
+}
+
+/* ---------- chart form ---------- */
+var noTime = document.getElementById("no-time");
+var tob = document.getElementById("tob");
+noTime.addEventListener("change", function(){ tob.disabled = noTime.checked; if(noTime.checked) tob.value=""; });
+
+/* English date selects (native <input type=date> follows OS locale) */
+var MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+var selM = document.getElementById("dob-month");
+var selD = document.getElementById("dob-day");
+var selY = document.getElementById("dob-year");
+
+function daysInMonth(y, m){ return new Date(y||2026, m||0, 0).getDate(); }
+function fillDays(keep){
+  var y = parseInt(selY.value,10), m = parseInt(selM.value,10);
+  var max = daysInMonth(y, m);
+  var cur = keep || selD.value;
+  var html = '<option value="" disabled' + (cur?"":" selected") + '>Day</option>';
+  for(var i=1;i<=max;i++){
+    html += '<option value="'+i+'"'+(String(i)===cur?" selected":"")+'>'+i+'</option>';
+  }
+  selD.innerHTML = html;
+}
+(function initDob(){
+  var mh = '<option value="" disabled selected>Month</option>';
+  MONTHS.forEach(function(mn,i){ mh += '<option value="'+(i+1)+'">'+mn+'</option>'; });
+  selM.innerHTML = mh;
+  var yh = '<option value="" disabled selected>Year</option>';
+  for(var yy=2026; yy>=1900; yy--){ yh += '<option value="'+yy+'">'+yy+'</option>'; }
+  selY.innerHTML = yh;
+  fillDays();
+})();
+selM.addEventListener("change", function(){ fillDays(); });
+selY.addEventListener("change", function(){ fillDays(); });
+
+function getDob(){
+  var y = parseInt(selY.value,10), m = parseInt(selM.value,10), d = parseInt(selD.value,10);
+  if(!y || !m || !d) return null;
+  if(y<1900 || y>2026 || m<1 || m>12) return null;
+  if(d<1 || d>daysInMonth(y,m)) return null;
+  return { y:y, m:m, d:d };
+}
+function getTime(){
+  var v = (tob.value||"").trim();
+  if(!v) return null;
+  var m = v.match(/^(\d{1,2})[:.](\d{2})$/);
+  if(!m) return null;
+  var h = parseInt(m[1],10), mi = parseInt(m[2],10);
+  if(h>23 || mi>59) return null;
+  return { hour:h, min:mi };
+}
+
+document.getElementById("chart-form").addEventListener("submit", function(e){
+  e.preventDefault();
+  var err = document.getElementById("chart-err");
+  var dob = getDob();
+  var t = null;
+  if(!noTime.checked){ t = getTime(); if(tob.value.trim() && !t){ err.textContent = "Enter time as HH:MM (24-hour), or leave it empty."; err.classList.add("show"); return; } }
+  if(!dob){ err.textContent = "Please enter your full date of birth."; err.classList.add("show"); return; }
+  err.classList.remove("show");
+  var y=dob.y, mo=dob.m, d=dob.d;
+  var hour=null, min=0;
+  if(t){ hour=t.hour; min=t.min; }
+  if(hour!==null){
+    document.getElementById("meta-notes").textContent = "li chun boundary approximated";
+  } else {
+    document.getElementById("meta-notes").textContent = "hour pillar omitted · li chun approximated";
+  }
+  state.chart = castChart(y,mo,d,hour,min);
+  renderChart();
+});
+
+function renderChart(){
+  var c = state.chart;
+  document.getElementById("pillars-date").textContent = c.dateStr;
+  var POS = ["Year","Month","Day","Hour"];
+  var html = "";
+  c.pillars.forEach(function(p,i){
+    if(!p){
+      html += '<div class="pillar" style="display:flex;align-items:center;justify-content:center;color:var(--faint);font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;">—</div>';
+      return;
+    }
+    html += '<div class="pillar'+(p.isDay?' is-day':'')+'">'
+      + '<span class="pos">'+POS[i]+'</span>'
+      + '<span class="gan">'+STEMS[p.gan].c+'</span>'
+      + '<span class="zhi">'+BRANCHES[p.zhi].c+'</span>'
+      + '<span class="py">'+STEMS[p.gan].p+' '+BRANCHES[p.zhi].p+'</span>'
+      + '</div>';
+  });
+  document.getElementById("pillars").innerHTML = html;
+  document.getElementById("dm-name").textContent = (c.dm.yang?"Yang ":"Yin ")+c.dm.e;
+  document.getElementById("dm-zh").textContent = c.dm.c+" · "+c.dm.persona;
+  document.getElementById("dm-desc").textContent = c.dm.desc;
+  var order = ["Wood","Fire","Earth","Metal","Water"];
+  var max = Math.max.apply(null, order.map(function(k){return c.elements[k];})) || 1;
+  var bars = "";
+  order.forEach(function(k){
+    bars += '<div class="el-row"><span class="el-name"><i>'+ELEMENT_ZH[k]+'</i>'+k+'</span>'
+      + '<div class="el-track"><div class="el-fill'+(c.elements[k]===max&&c.elements[k]>0?' lead':'')+'" style="width:0%"></div></div>'
+      + '<span class="el-n">'+c.elements[k]+'</span></div>';
+  });
+  document.getElementById("el-bars").innerHTML = bars;
+  document.getElementById("chart-result").style.display = "block";
+  setTimeout(function(){
+    document.querySelectorAll("#el-bars .el-fill").forEach(function(f,i){
+      f.style.width = Math.round(c.elements[order[i]]/max*100)+"%";
+    });
+  }, 80);
+  document.getElementById("chart-result").scrollIntoView({behavior:"smooth", block:"start"});
+}
+
+document.getElementById("chart-save").addEventListener("click", function(){
+  submitEmail(document.getElementById("chart-email").value.trim(), "save_chart", document.getElementById("chart-save-ok"));
+});
+
+/* ---------- share card ---------- */
+function renderShare(){
+  var full = document.getElementById("share-full");
+  var missing = document.getElementById("share-missing");
+  if(state.face && state.chart){
+    full.style.display="block";
+    missing.style.display="none";
+    document.getElementById("card-el-char").textContent = ELEMENTS[state.face].char;
+    document.getElementById("card-face").textContent = ELEMENTS[state.face].name;
+    document.getElementById("card-dm").textContent = "DAY MASTER · "+(state.chart.dm.yang?"YANG ":"YIN ")+state.chart.dm.e.toUpperCase()+" — "+state.chart.dm.persona.toUpperCase();
+  } else {
+    full.style.display="none";
+    missing.style.display="block";
+    var need = [];
+    if(!state.face) need.push("a face reading");
+    if(!state.chart) need.push("a birth chart");
+    document.getElementById("share-missing-msg").textContent = "Your card still needs "+need.join(" and ")+".";
+  }
+}
+var origGoto = goto;
+goto = function(name){ if(name==="share") renderShare(); origGoto(name); };
+document.getElementById("dl-btn").addEventListener("click", function(){ toast("Card download ships with the first production build."); });
+document.getElementById("sh-btn").addEventListener("click", function(){ toast("Story sharing ships with the first production build."); });
+
+})();
+</script>
+</body>
+</html>
