@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="mien-build" content="b10-21.5">
+<title>Mien — Face Engine Diagnostics</title>
+<style>
+  :root{
+    --bg:#0A0B0E; --ink:#EDEAE3; --dim:#8C8779; --seal:#C8452C;
+    --ok:#7FB069; --bad:#C8452C; --warn:#D9A227; --line:rgba(237,234,227,.14);
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; padding:24px 18px 60px; background:var(--bg); color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
+    line-height:1.55; -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:760px;margin:0 auto}
+  h1{font-size:19px;font-weight:600;letter-spacing:.02em;margin:0 0 6px}
+  h1 span{color:var(--seal)}
+  .sub{color:var(--dim);font-size:13px;margin:0 0 22px}
+  .row{display:flex;gap:12px;padding:9px 0;border-top:1px solid var(--line);font-size:13px;align-items:flex-start}
+  .row:first-of-type{border-top:0}
+  .tag{
+    flex:0 0 auto; min-width:54px; text-align:center; font-size:10px; letter-spacing:.1em;
+    padding:3px 7px; border-radius:3px; font-weight:600; margin-top:1px;
+  }
+  .t-run{background:rgba(237,234,227,.1);color:var(--dim)}
+  .t-ok{background:rgba(127,176,105,.16);color:var(--ok)}
+  .t-bad{background:rgba(200,69,44,.18);color:#E4776A}
+  .t-warn{background:rgba(217,162,39,.16);color:var(--warn)}
+  .body{flex:1 1 auto;min-width:0}
+  .label{font-weight:600}
+  .val{color:var(--dim);font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;word-break:break-word;white-space:pre-wrap}
+  pre{
+    background:#111317; border:1px solid var(--line); border-radius:6px; padding:14px;
+    font-size:11.5px; line-height:1.5; overflow:auto; max-height:340px; color:#BDB8AC;
+    white-space:pre-wrap; word-break:break-word; margin:22px 0 0;
+  }
+  .btns{display:flex;gap:10px;margin-top:16px;flex-wrap:wrap}
+  button{
+    appearance:none;border:1px solid var(--line);background:transparent;color:var(--ink);
+    padding:10px 16px;border-radius:4px;font-size:12px;letter-spacing:.08em;text-transform:uppercase;
+    cursor:pointer;font-family:inherit;
+  }
+  button:hover{border-color:rgba(237,234,227,.4)}
+  button.primary{background:var(--seal);border-color:var(--seal)}
+  .hint{color:var(--dim);font-size:12px;margin-top:18px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Mien<span>.</span> Face engine diagnostics</h1>
+  <p class="sub">Runs entirely on your device. Nothing is uploaded. Build <span id="build">—</span></p>
+  <div id="log"></div>
+  <div class="btns">
+    <button class="primary" id="copy">Copy report</button>
+    <button id="again">Run again</button>
+  </div>
+  <p class="hint">If a step fails, the technical detail is shown under it — that is the part to send back.</p>
+  <pre id="report" hidden></pre>
+</div>
+
+<script>
+var BUILD = "b10-21.5";
+document.getElementById("build").textContent = BUILD;
+
+var CDNS = [
+  "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.0.1",
+  "https://fastly.jsdelivr.net/npm/@mediapipe/tasks-vision@1.0.1",
+  "https://unpkg.com/@mediapipe/tasks-vision@1.0.1"
+];
+var MODELS = [
+  "models/face_landmarker.task",
+  "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task"
+];
+
+var lines = [];
+function esc(s){ return String(s).replace(/[<>&]/g, function(c){ return {"<":"&lt;",">":"&gt;","&":"&amp;"}[c]; }); }
+function row(state, label, value){
+  var el = document.createElement("div");
+  el.className = "row";
+  el.innerHTML = '<span class="tag t-' + state + '">' + state.toUpperCase() + "</span>" +
+    '<div class="body"><div class="label">' + esc(label) + "</div>" +
+    (value ? '<div class="val">' + esc(value) + "</div>" : "") + "</div>";
+  document.getElementById("log").appendChild(el);
+  lines.push("[" + state + "] " + label + (value ? " — " + value : ""));
+}
+function detail(e){
+  if(!e) return "";
+  var s = (e.name || "Error") + ": " + (e.message || e);
+  if(e.stack){
+    var l = String(e.stack).split("\n").slice(0, 3).join(" | ");
+    s += "\n" + l;
+  }
+  return s;
+}
+
+function hasSimd(){
+  try{
+    var b = new Uint8Array([0,97,115,109,1,0,0,0,1,5,1,96,0,1,123,3,2,1,0,10,10,1,8,0,65,0,253,15,253,98,11]);
+    return WebAssembly.validate(b);
+  }catch(e){ return false; }
+}
+function glInfo(){
+  try{
+    var c = document.createElement("canvas");
+    var g = c.getContext("webgl2") || c.getContext("webgl");
+    if(!g) return { ok:false, why:"no WebGL context" };
+    var dbg = g.getExtension("WEBGL_debug_renderer_info");
+    var r = dbg ? g.getParameter(dbg.UNMASKED_RENDERER_WEBGL) : "(renderer hidden)";
+    var v = dbg ? g.getParameter(dbg.UNMASKED_VENDOR_WEBGL) : "";
+    return { ok:true, why: (v ? v + " · " : "") + r };
+  }catch(e){ return { ok:false, why: detail(e) }; }
+}
+
+async function run(){
+  document.getElementById("log").innerHTML = "";
+  lines = [];
+  var M = null, vision = null, baseUsed = null, modelUsed = null;
+  var gl = glInfo();
+
+  row("run", "Build", BUILD + " · " + new Date().toISOString());
+  row("run", "Browser", navigator.userAgent);
+  row(navigator.hardwareConcurrency >= 4 ? "ok" : "warn", "CPU cores",
+      String(navigator.hardwareConcurrency || "unknown") + " · memory " + (navigator.deviceMemory || "unknown") + " GB");
+
+  row(typeof WebAssembly === "object" ? "ok" : "bad", "WebAssembly",
+      typeof WebAssembly === "object" ? "available" : "MISSING — the engine cannot run");
+  var simd = hasSimd();
+  row(simd ? "ok" : "bad", "WASM SIMD", simd ? "supported" : "NOT supported — model inference will fail");
+  row(typeof SharedArrayBuffer !== "undefined" ? "ok" : "warn", "SharedArrayBuffer",
+      typeof SharedArrayBuffer !== "undefined" ? "available" : "blocked (usually fine without threads)");
+  row(gl.ok ? "ok" : "warn", "WebGL", gl.why);
+
+  /* model fetch */
+  for(var i=0;i<MODELS.length;i++){
+    try{
+      var t0 = performance.now();
+      var r = await fetch(MODELS[i], { cache:"no-store" });
+      var buf = await r.arrayBuffer();
+      row(r.ok && buf.byteLength > 1000000 ? "ok" : "bad",
+          "Model #" + (i+1) + " · " + MODELS[i].split("/").slice(0,3).join("/"),
+          "HTTP " + r.status + " · " + (buf.byteLength/1048576).toFixed(2) + " MB · " + Math.round(performance.now()-t0) + " ms");
+      if(r.ok && buf.byteLength > 1000000 && !modelUsed) modelUsed = MODELS[i];
+      if(modelUsed) break;
+    }catch(e){
+      row("bad", "Model #" + (i+1), detail(e));
+    }
+  }
+
+  /* runtime import */
+  for(var j=0;j<CDNS.length;j++){
+    try{
+      var t1 = performance.now();
+      M = await import(CDNS[j] + "/vision_bundle.mjs");
+      row("ok", "Runtime #" + (j+1) + " · " + CDNS[j].replace("https://",""),
+          "loaded in " + Math.round(performance.now()-t1) + " ms");
+      baseUsed = CDNS[j];
+      break;
+    }catch(e){
+      row("bad", "Runtime #" + (j+1) + " · " + CDNS[j].replace("https://",""), detail(e));
+    }
+  }
+  if(!M){ row("bad", "ABORT", "no runtime could be imported"); return finish(); }
+
+  try{
+    vision = await M.FilesetResolver.forVisionTasks(baseUsed + "/wasm");
+    row("ok", "WASM fileset", "resolved");
+  }catch(e){
+    row("bad", "WASM fileset", detail(e)); return finish();
+  }
+
+  /* engine creation, GPU then CPU */
+  var lm = null, delegate = null;
+  for(var d=0; d<2; d++){
+    var del = d === 0 ? "GPU" : "CPU";
+    try{
+      var t2 = performance.now();
+      lm = await M.FaceLandmarker.createFromOptions(vision, {
+        baseOptions:{ modelAssetPath: modelUsed || MODELS[0], delegate: del },
+        runningMode:"VIDEO", numFaces:1
+      });
+      delegate = del;
+      row("ok", "Engine created (" + del + ")", "ready in " + Math.round(performance.now()-t2) + " ms");
+      break;
+    }catch(e){
+      row("warn", "Engine create (" + del + ") failed", detail(e));
+    }
+  }
+  if(!lm){ row("bad", "ABORT", "engine could not be created with GPU or CPU"); return finish(); }
+
+  /* inference on a blank canvas — proves the model actually runs */
+  try{
+    var cv = document.createElement("canvas");
+    cv.width = 512; cv.height = 512;
+    var cx = cv.getContext("2d");
+    cx.fillStyle = "#808080"; cx.fillRect(0,0,512,512);
+    var t3 = performance.now();
+    var res = lm.detectForVideo(cv, performance.now());
+    row("ok", "Inference on canvas (" + delegate + ")",
+        "returned in " + Math.round(performance.now()-t3) + " ms · faces: " +
+        ((res && res.faceLandmarks) ? res.faceLandmarks.length : "n/a"));
+  }catch(e){
+    row("bad", "Inference on canvas (" + delegate + ")", detail(e));
+  }
+
+  /* same test through an ImageBitmap, as a decoded photo would arrive */
+  try{
+    if(typeof createImageBitmap === "function"){
+      var cv2 = document.createElement("canvas");
+      cv2.width = 512; cv2.height = 512;
+      cv2.getContext("2d").fillRect(0,0,512,512);
+      var bmp = await createImageBitmap(cv2);
+      var res2 = lm.detectForVideo(bmp, performance.now() + 2);
+      row("ok", "Inference on ImageBitmap",
+          "faces: " + ((res2 && res2.faceLandmarks) ? res2.faceLandmarks.length : "n/a"));
+    } else {
+      row("warn", "Inference on ImageBitmap", "createImageBitmap unavailable");
+    }
+  }catch(e){
+    row("bad", "Inference on ImageBitmap", detail(e));
+  }
+
+  /* real photo decode path — a 1x1 PNG through the <img> route */
+  try{
+    var img = new Image();
+    var url = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8AAAAJAAf8D0d0AAAAASUVORK5CYII=";
+    await new Promise(function(res, rej){ img.onload = res; img.onerror = function(){ rej(new Error("img decode failed")); }; img.src = url; });
+    row("ok", "Image element decode", "data URI decoded " + img.naturalWidth + "×" + img.naturalHeight);
+  }catch(e){
+    row("bad", "Image element decode", detail(e));
+  }
+
+  finish();
+}
+
+function finish(){
+  var pre = document.getElementById("report");
+  var head = "Mien face-engine diagnostics\nbuild " + BUILD + "\n" + navigator.userAgent + "\n\n";
+  pre.textContent = head + lines.join("\n");
+  pre.hidden = false;
+}
+
+document.getElementById("copy").addEventListener("click", function(){
+  var txt = document.getElementById("report").textContent;
+  var btn = this;
+  var ok = function(){ btn.textContent = "Copied"; setTimeout(function(){ btn.textContent = "Copy report"; }, 1600); };
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(txt).then(ok).catch(function(){ fallback(); });
+  } else { fallback(); }
+  function fallback(){
+    var ta = document.createElement("textarea");
+    ta.value = txt; document.body.appendChild(ta); ta.select();
+    try{ document.execCommand("copy"); ok(); }catch(e){}
+    document.body.removeChild(ta);
+  }
+});
+
+document.getElementById("again").addEventListener("click", function(){
+  document.getElementById("report").hidden = true;
+  run();
+});
+
+run();
+</script>
+</body>
+</html>
