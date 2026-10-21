@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="mien-build" content="b10-21.4">
+<meta name="mien-build" content="b10-21.6">
 <title>Mien — Your face first. Your fate next.</title>
 <meta name="description" content="Mien reads your face through the 3,000-year-old Chinese art of physiognomy — then your birth chart through BaZi. Frames processed on your device. Never uploaded.">
 <meta property="og:title" content="Mien — Your face first. Your fate next.">
@@ -158,6 +158,36 @@ footer.site a:hover{color:var(--ink);}
   text-align:center;font-family:var(--mono);font-size:10px;color:var(--faint);
   letter-spacing:.14em;text-transform:uppercase;margin-top:18px;
 }
+
+/* fallback — WebGL unavailable */
+.scan-fallback{display:none;max-width:380px;margin:0 auto;}
+.scan-stage.state-fallback .scan-fallback{display:block;}
+.scan-stage.state-fallback .channels,
+.scan-stage.state-fallback .scan-live,
+.scan-stage.state-fallback .scan-processing{display:none;}
+.fb-title{
+  font-family:var(--serif);font-style:italic;font-size:19px;font-weight:700;
+  margin:0 0 8px;color:var(--ink);
+}
+.fb-body{color:var(--muted);font-size:13.5px;line-height:1.65;margin:0 0 14px;}
+.fb-how{border:1px solid var(--line);border-radius:3px;padding:12px 14px;margin:0 0 18px;background:var(--surface);}
+.fb-how summary{font-size:12.5px;color:var(--ink);cursor:pointer;letter-spacing:.02em;}
+.fb-how ol{margin:10px 0 0;padding-left:18px;color:var(--muted);font-size:12.5px;line-height:1.7;}
+.fb-how code{font-family:var(--mono);font-size:11.5px;color:var(--seal-hi);}
+.fb-pick-label{
+  display:block;font-family:var(--mono);font-size:10px;color:var(--faint);
+  letter-spacing:.14em;text-transform:uppercase;margin:0 0 10px;
+}
+.fb-els{display:grid;gap:8px;margin:0 0 14px;}
+.fb-el{
+  display:flex;align-items:center;gap:12px;width:100%;text-align:left;cursor:pointer;
+  background:var(--surface);border:1px solid var(--line);border-radius:3px;padding:11px 14px;
+  transition:border-color .2s,transform .2s;font-family:inherit;
+}
+.fb-el:hover{border-color:rgba(200,69,44,.55);transform:translateY(-1px);}
+.fb-el .zh{font-family:var(--songti);font-size:20px;color:var(--seal-hi);line-height:1;}
+.fb-el .nm{font-family:var(--serif);font-style:italic;font-size:15px;font-weight:700;color:var(--ink);}
+.fb-el .ds{display:block;font-size:11.5px;color:var(--faint);margin-top:2px;letter-spacing:.02em;}
 
 /* live camera */
 .scan-live{display:none;max-width:340px;margin:0 auto;}
@@ -412,6 +442,25 @@ footer.site a:hover{color:var(--ink);}
         <input type="file" id="file-input" class="hidden-input" accept="image/*">
       </div>
 
+      <!-- state: fallback (WebGL unavailable on this browser) -->
+      <div class="scan-fallback" id="scan-fallback">
+        <p class="fb-title">This browser can't run the reader.</p>
+        <p class="fb-body" id="fb-body">The on-device reader needs WebGL, and your browser has it switched off. Two ways forward —</p>
+        <details class="fb-how">
+          <summary>Turn WebGL on, then scan</summary>
+          <ol>
+            <li>Chrome → <b>Settings → System</b> → enable <b>“Use graphics acceleration when available”</b>, then relaunch Chrome.</li>
+            <li>Open <code>chrome://gpu</code> and check that <b>WebGL</b> says “Hardware accelerated”.</li>
+            <li>On a managed work device this may be locked by policy — another browser or your phone will work.</li>
+          </ol>
+        </details>
+        <div class="fb-pick">
+          <span class="fb-pick-label">Or choose your face shape — the reading continues the same way</span>
+          <div class="fb-els" id="fb-els"></div>
+        </div>
+        <button class="btn btn-ghost btn-block" id="fb-cancel">Back</button>
+      </div>
+
       <!-- state: live -->
       <div class="scan-live">
         <div class="scan-frame" id="scan-frame">
@@ -594,7 +643,7 @@ var CONFIG = {
 };
 
 /* build stamp — bump on every deploy so errors in the wild are traceable */
-var BUILD = "b10-21.4";
+var BUILD = "b10-21.6";
 try{ console.log("[Mien] build " + BUILD); }catch(e){}
 
 /* ---------- attribution (UTM) ---------- */
@@ -762,6 +811,54 @@ var scanner = (function(){
 
   function setState(s){ stage.setAttribute("data-state", s); stage.className = "scan-stage state-" + s; }
 
+  /* ---- WebGL availability ----------------------------------------------------
+     MediaPipe Tasks needs a WebGL context even with the CPU delegate: the graph
+     uploads every frame as a GL texture (ImageToTensorCalculator). Without WebGL
+     inference dies with "reading 'activeTexture'", so check up front. */
+  var glOk = null;
+  function webglOk(){
+    if(glOk !== null) return glOk;
+    try{
+      var c = document.createElement("canvas");
+      glOk = !!(c.getContext("webgl2") || c.getContext("webgl") || c.getContext("experimental-webgl"));
+    }catch(e){ glOk = false; }
+    return glOk;
+  }
+  function showFallback(msg){
+    if(msg) document.getElementById("fb-body").textContent = msg;
+    setState("fallback");
+  }
+  function looksLikeNoWebgl(err){
+    var s = ((err && err.message) || "") + " " + ((err && err.cause && err.cause.message) || "");
+    return /activeTexture|webgl|kGpuService|InferenceCalculator/i.test(s);
+  }
+
+  /* manual face-shape picker — the funnel continues without a camera */
+  var FB_HINTS = {
+    Water:"Round, full, soft contours",
+    Fire:"Pointed chin, bright eyes, tapered",
+    Wood:"Long face, tall forehead, narrow",
+    Metal:"Square jaw, defined cheekbones",
+    Earth:"Broad and full, steady proportions"
+  };
+  (function buildFallbackPicks(){
+    var host = document.getElementById("fb-els");
+    if(!host) return;
+    ["Water","Fire","Earth","Metal","Wood"].forEach(function(k){
+      var el = ELEMENTS[k];
+      var b = document.createElement("button");
+      b.type = "button";
+      b.className = "fb-el";
+      b.innerHTML = '<span class="zh">' + el.char + '</span><span><span class="nm">' +
+        el.name.replace(" Face","") + '</span><span class="ds">' + FB_HINTS[k] + "</span></span>";
+      b.addEventListener("click", function(){
+        setState("channels");   /* clear the fallback panel — the result card takes over */
+        revealFace({ element:k, region:"middle", scores:{}, manual:true }, null);
+      });
+      host.appendChild(b);
+    });
+  })();
+
   function ensureLoaded(){
     if(landmarker) return Promise.resolve(landmarker);
     if(loading) return loading;
@@ -838,6 +935,10 @@ var scanner = (function(){
 
   /* ---- camera channel ---- */
   function startCamera(){
+    if(!webglOk()){
+      showFallback("The live reader needs WebGL, and this browser has it switched off. Turn it on below — or choose your face shape and continue.");
+      return;
+    }
     liveStatus.textContent = "Loading the reader… (first time ~4 MB)";
     ensureLoaded().then(function(){
       return navigator.mediaDevices.getUserMedia({ video:{ facingMode:"user", width:{ideal:720} }, audio:false });
@@ -849,6 +950,11 @@ var scanner = (function(){
       liveStatus.textContent = "Hold still — reading…";
       loop();
     }).catch(function(err){
+      if(looksLikeNoWebgl(err)){
+        glOk = false;
+        showFallback("The live reader needs WebGL, and this browser has it switched off. Turn it on below — or choose your face shape and continue.");
+        return;
+      }
       if(err && (err.name==="NotAllowedError" || err.name==="PermissionDeniedError")){
         toast("Camera blocked — no problem. Upload a photo instead.");
       }else if(err && (err.code==="MODEL" || err.code==="CDN")){
@@ -965,6 +1071,10 @@ var scanner = (function(){
       toast("HEIC photos can't be read in a browser — export as JPG or screenshot it, then retry.");
       return;
     }
+    if(!webglOk()){
+      showFallback("Reading a photo needs WebGL, and this browser has it switched off. Turn it on below — or choose your face shape and continue.");
+      return;
+    }
     liveStatus.textContent = "";
     toast("Reading your photo…");
     ensureLoaded().then(function(){
@@ -990,6 +1100,12 @@ var scanner = (function(){
           cause: err && err.cause && (err.cause.name + ": " + err.cause.message) };
         console.error("[Mien] photo read failed", window.__mienLastError, err);
       }catch(ignored){}
+      if(looksLikeNoWebgl(err)){
+        /* the engine got as far as inference, then found no GL context */
+        glOk = false;
+        showFallback("Reading a photo needs WebGL, and this browser has it switched off. Turn it on below — or choose your face shape and continue.");
+        return;
+      }
       if(code === "MODEL"){
         toast("The face reader couldn't load. Check your network (a VPN may be needed), then retry.");
       } else if(code === "CDN"){
@@ -1045,6 +1161,7 @@ var scanner = (function(){
     if(stream){ stream.getTracks().forEach(function(tr){ tr.stop(); }); stream = null; }
     video.srcObject = null;
     frame.classList.remove("has-face");
+    document.getElementById("scan-result").style.display = "none";
     setState("channels");
   }
 
@@ -1054,6 +1171,7 @@ var scanner = (function(){
   fileInput.addEventListener("change", function(){ if(fileInput.files[0]) uploadFile(fileInput.files[0]); });
   document.getElementById("live-cancel").addEventListener("click", resetChannels);
   document.getElementById("rescan-btn").addEventListener("click", resetChannels);
+  document.getElementById("fb-cancel").addEventListener("click", resetChannels);
 
   return { suspend: resetChannels };
 })();
@@ -1065,9 +1183,15 @@ function revealFace(result, m){
   document.getElementById("face-el-char").textContent = el.char;
   document.getElementById("face-el-name").textContent = el.name;
   document.getElementById("hook-el").textContent = result.element;
-  document.getElementById("face-measure").textContent =
-    "L/W " + m.lw.toFixed(2) + " · jaw/W " + m.jawFace.toFixed(2) + " · " + result.region + "-led regions";
-  var traits = el.base.concat(REGIONS[result.region]);
+  if(result.manual){
+    document.getElementById("face-el-sub").textContent = "The Face · Self-reported";
+    document.getElementById("face-measure").textContent = "Shape chosen by you · not measured on device";
+  } else {
+    document.getElementById("face-el-sub").textContent = "The Face · Mien Scan";
+    document.getElementById("face-measure").textContent =
+      "L/W " + m.lw.toFixed(2) + " · jaw/W " + m.jawFace.toFixed(2) + " · " + result.region + "-led regions";
+  }
+  var traits = el.base.concat(result.manual ? [] : REGIONS[result.region]);
   document.getElementById("face-traits").innerHTML = traits.map(function(t){ return "<li>"+t+"</li>"; }).join("");
   var r = document.getElementById("scan-result");
   r.style.display = "block";
