@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="mien-build" content="b10-21.4">
 <title>Mien — Your face first. Your fate next.</title>
 <meta name="description" content="Mien reads your face through the 3,000-year-old Chinese art of physiognomy — then your birth chart through BaZi. Frames processed on your device. Never uploaded.">
 <meta property="og:title" content="Mien — Your face first. Your fate next.">
@@ -592,6 +593,10 @@ var CONFIG = {
   }
 };
 
+/* build stamp — bump on every deploy so errors in the wild are traceable */
+var BUILD = "b10-21.4";
+try{ console.log("[Mien] build " + BUILD); }catch(e){}
+
 /* ---------- attribution (UTM) ---------- */
 (function captureAttribution(){
   try{
@@ -747,6 +752,7 @@ var REGIONS = {
    ============================================================ */
 var scanner = (function(){
   var landmarker = null, loading = null;
+  var preferCpu = false, delegateUsed = "GPU", rebuilding = false;
   var stream = null, rafId = 0, stableCount = 0;
   var stage = document.getElementById("scan-stage");
   var video = document.getElementById("scan-video");
@@ -772,19 +778,25 @@ var scanner = (function(){
         runningMode:"VIDEO", numFaces:1
       });
     }
+    function noteDelegate(d, lm){ delegateUsed = d; return lm; }
 
     /* try every model source; on each, try GPU then fall back to CPU
        (GPU needs WebGL — disabled hardware acceleration breaks it silently) */
     function tryModels(m, vision, idx){
       if(idx >= CONFIG.MP_MODELS.length) return Promise.reject(fail("MODEL"));
       var url = CONFIG.MP_MODELS[idx];
-      return createWith(m, vision, url, "GPU").catch(function(e1){
-        lastErr = e1;
-        return createWith(m, vision, url, "CPU");
-      }).catch(function(e2){
-        lastErr = e2;
-        return tryModels(m, vision, idx + 1);
-      });
+      var order = preferCpu ? ["CPU"] : ["GPU", "CPU"];
+      return createWith(m, vision, url, order[0])
+        .then(function(lm){ return noteDelegate(order[0], lm); })
+        .catch(function(e1){
+          lastErr = e1;
+          if(order.length < 2) return tryModels(m, vision, idx + 1);
+          return createWith(m, vision, url, order[1])
+            .then(function(lm){ return noteDelegate(order[1], lm); });
+        }).catch(function(e2){
+          lastErr = e2;
+          return tryModels(m, vision, idx + 1);
+        });
     }
 
     /* try every CDN base for the wasm runtime */
@@ -810,6 +822,18 @@ var scanner = (function(){
       throw e.code ? e : fail("CDN");
     });
     return loading;
+  }
+
+  /* GPU delegate can be created successfully yet throw at inference time
+     (disabled hardware acceleration, blocked WebGL, corporate policy).
+     Rebuild once on CPU, then reuse it for every later attempt. */
+  function rebuildOnCpu(){
+    if(preferCpu) return Promise.resolve(landmarker);
+    preferCpu = true;
+    try{ if(landmarker && landmarker.close) landmarker.close(); }catch(e){}
+    landmarker = null;
+    loading = null;
+    return ensureLoaded();
   }
 
   /* ---- camera channel ---- */
@@ -843,7 +867,17 @@ var scanner = (function(){
     try{ t = performance.now(); if(t - (loop.last||0) < 60) return; loop.last = t; }
     catch(e){}
     var res;
-    try{ res = landmarker.detectForVideo(video, t); }catch(e){ return; }
+    try{ res = landmarker.detectForVideo(video, t); }
+    catch(e){
+      /* GPU inference is failing on this machine — rebuild on CPU in the background */
+      if(!preferCpu && !rebuilding){
+        rebuilding = true;
+        liveStatus.textContent = "Switching to a compatible engine…";
+        rebuildOnCpu().then(function(){ rebuilding = false; })
+          .catch(function(){ rebuilding = false; });
+      }
+      return;
+    }
     var has = res && res.faceLandmarks && res.faceLandmarks.length > 0;
     frame.classList.toggle("has-face", !!has);
     if(has){
@@ -875,8 +909,9 @@ var scanner = (function(){
     });
   }
 
-  /* normalize any decoded source → same-origin ImageBitmap/canvas, capped edge.
-     Large camera JPEGs (4000px+) blow up the engine's texture upload — downscale first. */
+  /* normalize any decoded source → reusable canvas, capped edge.
+     Large camera JPEGs (4000px+) blow up the engine's texture upload — downscale first.
+     A canvas (not ImageBitmap) is returned so the same frame can be retried after a CPU rebuild. */
   var MAX_EDGE = 1400;
   function normalize(src){
     var w = src.width || src.naturalWidth || 0;
@@ -888,9 +923,6 @@ var scanner = (function(){
     cv.height = Math.max(1, Math.round(h * scale));
     var cx = cv.getContext("2d");
     cx.drawImage(src, 0, 0, cv.width, cv.height);
-    if(typeof createImageBitmap === "function"){
-      return createImageBitmap(cv).catch(function(){ return cv; });
-    }
     return Promise.resolve(cv);
   }
 
@@ -911,6 +943,20 @@ var scanner = (function(){
     return res;
   }
 
+  /* detect with a one-shot engine fallback: GPU inference failure → rebuild on CPU → retry */
+  function detectRobust(frame){
+    return new Promise(function(resolve, reject){
+      function attempt(){
+        try{ resolve(detectOnce(frame)); }
+        catch(e){
+          if(preferCpu){ reject(e); return; }
+          rebuildOnCpu().then(attempt).catch(function(){ reject(e); });
+        }
+      }
+      attempt();
+    });
+  }
+
   function uploadFile(file){
     if(!file) return;
     var looksImage = /^image\//.test(file.type || "") || /\.(jpe?g|png|webp|avif|bmp)$/i.test(file.name || "");
@@ -926,17 +972,17 @@ var scanner = (function(){
     }).then(function(src){
       return normalize(src);
     }).then(function(frame){
-      /* VIDEO-mode engine throughout — feed the still through detectForVideo */
-      var res = detectOnce(frame);
-      if(!res.faceLandmarks || !res.faceLandmarks.length){
-        toast("No face detected — try a clearer, front-facing photo.");
-        resetChannels(); return;
-      }
-      var lm = res.faceLandmarks[0];
-      var w = frame.width, h = frame.height;
-      var m = measure(lm, w, h);
-      if(m.facePx < 40){ toast("Face too small in the photo — move closer."); resetChannels(); return; }
-      finish(lm, w, h, frame);
+      return detectRobust(frame).then(function(res){
+        if(!res.faceLandmarks || !res.faceLandmarks.length){
+          toast("No face detected — try a clearer, front-facing photo.");
+          resetChannels(); return;
+        }
+        var lm = res.faceLandmarks[0];
+        var w = frame.width, h = frame.height;
+        var m = measure(lm, w, h);
+        if(m.facePx < 40){ toast("Face too small in the photo — move closer."); resetChannels(); return; }
+        finish(lm, w, h, frame);
+      });
     }).catch(function(err){
       var code = err && err.code;
       try{
@@ -953,7 +999,8 @@ var scanner = (function(){
       } else if(code === "DETECT"){
         toast("The face engine failed on that photo. Try a smaller JPG (under 5 MB).");
       } else {
-        toast("Couldn't read that photo. Try another one.");
+        toast("Couldn't read that photo. Try another one.  [" + BUILD + " · " + delegateUsed +
+              (code ? " · " + code : "") + "]");
       }
       resetChannels();
     });
