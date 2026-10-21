@@ -875,6 +875,42 @@ var scanner = (function(){
     });
   }
 
+  /* normalize any decoded source → same-origin ImageBitmap/canvas, capped edge.
+     Large camera JPEGs (4000px+) blow up the engine's texture upload — downscale first. */
+  var MAX_EDGE = 1400;
+  function normalize(src){
+    var w = src.width || src.naturalWidth || 0;
+    var h = src.height || src.naturalHeight || 0;
+    if(!w || !h){ var e = new Error("EMPTY"); e.code = "DECODE"; return Promise.reject(e); }
+    var scale = Math.min(1, MAX_EDGE / Math.max(w, h));
+    var cv = document.createElement("canvas");
+    cv.width = Math.max(1, Math.round(w * scale));
+    cv.height = Math.max(1, Math.round(h * scale));
+    var cx = cv.getContext("2d");
+    cx.drawImage(src, 0, 0, cv.width, cv.height);
+    if(typeof createImageBitmap === "function"){
+      return createImageBitmap(cv).catch(function(){ return cv; });
+    }
+    return Promise.resolve(cv);
+  }
+
+  function detectOnce(frame){
+    var res = null, firstErr = null;
+    try{ res = landmarker.detectForVideo(frame, performance.now()); }
+    catch(e1){ firstErr = e1; }
+    if(!res){
+      try{ res = landmarker.detectForVideo(frame, performance.now() + 1); }
+      catch(e2){ firstErr = firstErr || e2; }
+    }
+    if(!res){
+      var err = new Error("DETECT");
+      err.code = "DETECT";
+      err.cause = firstErr;
+      throw err;
+    }
+    return res;
+  }
+
   function uploadFile(file){
     if(!file) return;
     var looksImage = /^image\//.test(file.type || "") || /\.(jpe?g|png|webp|avif|bmp)$/i.test(file.name || "");
@@ -888,25 +924,34 @@ var scanner = (function(){
     ensureLoaded().then(function(){
       return decodeImage(file);
     }).then(function(src){
+      return normalize(src);
+    }).then(function(frame){
       /* VIDEO-mode engine throughout — feed the still through detectForVideo */
-      var res = landmarker.detectForVideo(src, performance.now());
-      if(!res || !res.faceLandmarks || !res.faceLandmarks.length){
+      var res = detectOnce(frame);
+      if(!res.faceLandmarks || !res.faceLandmarks.length){
         toast("No face detected — try a clearer, front-facing photo.");
         resetChannels(); return;
       }
       var lm = res.faceLandmarks[0];
-      var w = src.width || src.naturalWidth, h = src.height || src.naturalHeight;
+      var w = frame.width, h = frame.height;
       var m = measure(lm, w, h);
       if(m.facePx < 40){ toast("Face too small in the photo — move closer."); resetChannels(); return; }
-      finish(lm, w, h, src);
+      finish(lm, w, h, frame);
     }).catch(function(err){
       var code = err && err.code;
+      try{
+        window.__mienLastError = { code: code || "UNKNOWN", message: err && err.message,
+          cause: err && err.cause && (err.cause.name + ": " + err.cause.message) };
+        console.error("[Mien] photo read failed", window.__mienLastError, err);
+      }catch(ignored){}
       if(code === "MODEL"){
         toast("The face reader couldn't load. Check your network (a VPN may be needed), then retry.");
       } else if(code === "CDN"){
         toast("The face engine was blocked by your network. Try another browser or a VPN, then retry.");
       } else if(code === "DECODE"){
         toast("Couldn't read that image — please use a JPG or PNG.");
+      } else if(code === "DETECT"){
+        toast("The face engine failed on that photo. Try a smaller JPG (under 5 MB).");
       } else {
         toast("Couldn't read that photo. Try another one.");
       }
