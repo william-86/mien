@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="mien-build" content="b10-21.6">
+<meta name="mien-build" content="b10-21.9">
 <title>Mien — Your face first. Your fate next.</title>
 <meta name="description" content="Mien reads your face through the 3,000-year-old Chinese art of physiognomy — then your birth chart through BaZi. Frames processed on your device. Never uploaded.">
 <meta property="og:title" content="Mien — Your face first. Your fate next.">
@@ -225,17 +225,104 @@ footer.site a:hover{color:var(--ink);}
 .proc-status{text-align:center;font-family:var(--mono);font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--seal-hi);margin-top:18px;}
 
 /* result */
-.scan-result{max-width:420px;margin:26px auto 0;animation:reveal .45s ease both;}
+.scan-result{max-width:520px;margin:26px auto 0;animation:reveal .45s ease both;}
 @keyframes reveal{from{opacity:0;transform:scale(.97);}to{opacity:1;transform:none;}}
-.face-card{background:var(--surface);border:1px solid var(--line);border-radius:3px;padding:26px 24px;text-align:center;}
-.face-card .el-char{font-family:var(--songti);font-size:54px;line-height:1;color:var(--ink);}
-.face-card .el-name{font-family:var(--serif);font-style:italic;font-size:25px;font-weight:700;margin:8px 0 2px;}
-.face-card .el-sub{font-family:var(--mono);font-size:10.5px;letter-spacing:.26em;text-transform:uppercase;color:var(--faint);margin-bottom:6px;}
-.face-card .measure{font-family:var(--mono);font-size:10px;color:var(--faint);letter-spacing:.06em;display:block;margin-bottom:16px;}
-.face-card .traits{text-align:left;border-top:1px solid var(--line);padding-top:16px;margin-top:4px;}
-.face-card .traits li{list-style:none;font-size:13.5px;color:var(--muted);padding:7px 0 7px 22px;position:relative;border-bottom:1px solid rgba(42,46,54,.6);}
-.face-card .traits li::before{content:"—";position:absolute;left:0;color:var(--seal);}
-.face-card .traits li b{color:var(--ink);font-weight:600;}
+/* ---------- reading report ---------- */
+.report{max-width:520px;margin:8px auto 0;}
+.rp-head{text-align:center;padding-bottom:22px;}
+.rp-el{display:flex;align-items:center;justify-content:center;gap:18px;margin:16px 0 10px;}
+.rp-char{
+  font-family:var(--songti);font-size:58px;line-height:1;color:var(--ink);
+  width:86px;height:86px;display:flex;align-items:center;justify-content:center;
+  border:1px solid rgba(200,69,44,.4);border-radius:50%;
+  background:radial-gradient(circle at 50% 38%,rgba(200,69,44,.1),transparent 70%);
+}
+.rp-el-txt{text-align:left;}
+.rp-name{font-family:var(--serif);font-style:italic;font-size:26px;font-weight:700;line-height:1.2;}
+.rp-sub{font-family:var(--mono);font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--faint);margin-top:5px;}
+.rp-strip{
+  font-family:var(--mono);font-size:10.5px;color:var(--faint);letter-spacing:.06em;
+  display:flex;gap:8px;justify-content:center;flex-wrap:wrap;
+}
+.rp-strip span{border:1px solid var(--line);border-radius:100px;padding:3px 10px;}
+
+.rp-block{margin-top:32px;padding-top:24px;border-top:1px solid var(--line);}
+.rp-bhead{display:flex;align-items:baseline;gap:10px;margin-bottom:18px;flex-wrap:wrap;}
+.rp-zh{font-family:var(--songti);font-size:13px;color:var(--seal-hi);letter-spacing:.3em;}
+.rp-bhead h3{font-family:var(--serif);font-style:italic;font-size:19px;font-weight:700;letter-spacing:-.01em;}
+.rp-tag{
+  margin-left:auto;font-family:var(--mono);font-size:9.5px;color:var(--faint);
+  letter-spacing:.16em;text-transform:uppercase;
+}
+.rp-read{font-size:13.5px;color:var(--muted);line-height:1.75;margin-top:14px;}
+.rp-read b{color:var(--ink);font-weight:600;}
+
+/* three courts */
+.courts{display:grid;gap:16px;}
+.court-top{display:flex;align-items:baseline;gap:10px;margin-bottom:7px;}
+.court-name{font-size:12.5px;color:var(--ink);letter-spacing:.02em;}
+.court-name i{font-family:var(--songti);font-style:normal;color:var(--seal-hi);margin-right:7px;font-size:13px;}
+.court-when{font-family:var(--mono);font-size:9.5px;color:var(--faint);letter-spacing:.14em;text-transform:uppercase;}
+.court-pct{margin-left:auto;font-family:var(--mono);font-size:11.5px;color:var(--muted);}
+.court-track{height:5px;background:var(--raised);border-radius:100px;overflow:hidden;}
+.court-fill{height:100%;border-radius:100px;background:var(--faint);width:0;transition:width .9s cubic-bezier(.2,.7,.3,1);}
+.court.lead .court-fill{background:linear-gradient(90deg,var(--seal),var(--seal-hi));}
+.court.lead .court-name{color:var(--ink);font-weight:600;}
+.court.lead .court-pct{color:var(--seal-hi);}
+
+/* five features */
+.features{display:grid;gap:0;}
+.feat{display:grid;grid-template-columns:44px 1fr;gap:14px;padding:15px 0;border-bottom:1px solid rgba(42,46,54,.7);}
+.feat:last-child{border-bottom:0;}
+.feat-badge{
+  width:44px;height:44px;display:flex;align-items:center;justify-content:center;
+  font-family:var(--songti);font-size:21px;color:var(--ink);
+  border:1px solid var(--line);border-radius:3px;background:var(--surface);
+}
+.feat-hd{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;}
+.feat-hd .fn{font-family:var(--serif);font-style:italic;font-size:15px;font-weight:700;}
+.feat-hd .fc{font-family:var(--mono);font-size:9.5px;color:var(--faint);letter-spacing:.08em;}
+.feat-tx{font-size:13px;color:var(--muted);line-height:1.7;margin-top:4px;}
+.feat-tx b{color:var(--ink);font-weight:600;}
+
+/* wealth palace */
+.wealth{
+  margin-top:32px;padding:24px 22px;border:1px solid rgba(200,69,44,.38);border-radius:3px;
+  background:linear-gradient(160deg,rgba(200,69,44,.08),rgba(200,69,44,.02) 60%,transparent);
+}
+.wealth .rp-bhead{margin-bottom:16px;}
+.w-scale{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:12px;margin:16px 0 6px;}
+.w-end{font-family:var(--mono);font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--faint);}
+.w-track{position:relative;height:3px;background:rgba(237,234,227,.16);border-radius:100px;}
+.w-track i{
+  position:absolute;top:50%;left:50%;width:11px;height:11px;margin:-5.5px 0 0 -5.5px;border-radius:50%;
+  background:var(--seal-hi);box-shadow:0 0 0 3px rgba(200,69,44,.18);transition:left .9s cubic-bezier(.2,.7,.3,1);
+}
+.w-points{margin-top:14px;display:grid;gap:8px;}
+.w-points li{list-style:none;font-size:12.5px;color:var(--muted);padding-left:18px;position:relative;line-height:1.65;}
+.w-points li::before{content:"·";position:absolute;left:4px;color:var(--seal-hi);font-size:18px;line-height:1;}
+.w-points b{color:var(--ink);font-weight:600;}
+.w-foot{
+  margin-top:14px;padding-top:12px;border-top:1px solid rgba(200,69,44,.22);
+  font-size:11.5px;color:var(--faint);line-height:1.65;
+}
+
+.rp-fine{
+  font-size:11.5px;color:var(--faint);line-height:1.75;margin:20px 0 4px;
+  padding-left:12px;border-left:1px solid var(--line);
+}
+
+/* self-reported variant */
+.report .traits{display:none;}
+.report.manual .rp-block,
+.report.manual .wealth{display:none;}
+.report.manual .traits{display:block;text-align:left;margin-top:20px;}
+.report.manual .traits li{
+  list-style:none;font-size:13.5px;color:var(--muted);padding:9px 0 9px 22px;position:relative;
+  border-bottom:1px solid rgba(42,46,54,.6);
+}
+.report.manual .traits li::before{content:"—";position:absolute;left:0;color:var(--seal);}
+.report.manual .traits li b{color:var(--ink);font-weight:600;}
 .hook{margin-top:18px;padding:18px 20px;text-align:center;border:1px solid rgba(200,69,44,.45);border-radius:3px;background:rgba(200,69,44,.05);}
 .hook p{font-family:var(--serif);font-style:italic;font-size:15.5px;margin-bottom:14px;}
 .rescan{display:block;margin:16px auto 0;font-size:11.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--faint);border-bottom:1px solid var(--line);}
@@ -484,18 +571,69 @@ footer.site a:hover{color:var(--ink);}
 
     <!-- state: result -->
     <div class="scan-result" id="scan-result" style="display:none;">
-      <div class="face-card">
-        <div class="el-char" id="face-el-char">水</div>
-        <div class="el-name" id="face-el-name">Water-Type Face</div>
-        <div class="el-sub" id="face-el-sub">The Face · Mien Scan</div>
-        <span class="measure" id="face-measure"></span>
-        <ul class="traits" id="face-traits"></ul>
+      <div class="report" id="report">
+        <!-- header -->
+        <header class="rp-head">
+          <span class="eyebrow">Face Reading · 面相</span>
+          <div class="rp-el">
+            <span class="rp-char" id="face-el-char">水</span>
+            <div class="rp-el-txt">
+              <div class="rp-name" id="face-el-name">Water-Type Face</div>
+              <div class="rp-sub" id="face-el-sub">Measured on device · Mien Scan</div>
+            </div>
+          </div>
+          <div class="rp-strip" id="face-measure"></div>
+          <ul class="traits" id="face-traits"></ul>
+        </header>
+
+        <!-- 三停 -->
+        <section class="rp-block">
+          <div class="rp-bhead">
+            <span class="rp-zh">三停</span>
+            <h3>Three Courts</h3>
+            <span class="rp-tag">early · middle · later</span>
+          </div>
+          <div class="courts" id="courts"></div>
+          <p class="rp-read" id="courts-read"></p>
+        </section>
+
+        <!-- 五官 -->
+        <section class="rp-block">
+          <div class="rp-bhead">
+            <span class="rp-zh">五官</span>
+            <h3>Five Features</h3>
+            <span class="rp-tag">temperament, not appearance</span>
+          </div>
+          <div class="features" id="features"></div>
+        </section>
+
+        <!-- 财帛宫 -->
+        <section class="wealth" id="wealth">
+          <div class="rp-bhead">
+            <span class="rp-zh">鼻 · 财帛宫</span>
+            <h3>The Wealth Palace</h3>
+          </div>
+          <div class="w-scale">
+            <span class="w-end">Spreads wide</span>
+            <div class="w-track"><i id="w-dot"></i></div>
+            <span class="w-end">Holds tight</span>
+          </div>
+          <p class="rp-read" id="wealth-read"></p>
+          <ul class="w-points" id="wealth-points"></ul>
+          <p class="w-foot" id="wealth-foot"></p>
+        </section>
+
+        <div class="hook">
+          <p>Your face reads <span id="hook-el">Water</span>.<br>What does your birth chart say?</p>
+          <button class="btn btn-primary" data-goto="chart">Read my BaZi</button>
+        </div>
+
+        <p class="rp-fine">
+          A reflection prompt, not a forecast. Mien reads temperament from proportion —
+          nothing here decides your future, and your face is not being rated.
+        </p>
+        <button class="rescan" id="rescan-btn">Scan again</button>
       </div>
-      <div class="hook">
-        <p>Your face says <span id="hook-el">Water</span>.<br>What does your birth chart say?</p>
-        <button class="btn btn-primary" data-goto="chart">Read my BaZi</button>
-      </div>
-      <button class="rescan" id="rescan-btn">Scan again</button>
     </div>
 
     <div class="scan-fineprint">Frames processed on your device — never uploaded</div>
@@ -643,7 +781,7 @@ var CONFIG = {
 };
 
 /* build stamp — bump on every deploy so errors in the wild are traceable */
-var BUILD = "b10-21.6";
+var BUILD = "b10-21.9";
 try{ console.log("[Mien] build " + BUILD); }catch(e){}
 
 /* ---------- attribution (UTM) ---------- */
@@ -746,9 +884,24 @@ function measure(lm, w, h){
   var mid = Math.abs(noseBase.y - brow.y);  /* 三停 middle */
   var low = Math.abs(chin.y - noseBase.y);  /* 三停 lower */
   var tot = up+mid+low || 1;
+
+  /* five features — 眉眼口鼻 (ears need a profile frame) */
+  var eyeL = dist(P(33), P(133)) || 1;      /* right eye span */
+  var eyeR = dist(P(362), P(263)) || 1;     /* left eye span  */
+  var eyeAspect = ((Math.abs(P(159).y - P(145).y) / eyeL) +
+                   (Math.abs(P(386).y - P(374).y) / eyeR)) / 2;
+  var eyeW   = ((eyeL + eyeR) / 2) / W;
+  var noseW  = dist(P(129), P(358)) / W;
+  var noseL  = Math.abs(P(168).y - P(2).y) / L;
+  var mouthW = dist(P(61), P(291)) / W;
+  var lipFull = dist(P(0), P(17)) / (mouthW * W || 1);
+  var browGap = Math.abs(P(105).y - P(334).y) / L;   /* brow arch symmetry cue */
+
   return {
     lw: L/W, jawFace: jawW/W, foreFace: foreW/W, chinJaw: chinW/jawW,
     up: up/tot, mid: mid/tot, low: low/tot,
+    eyeAspect: eyeAspect, eyeW: eyeW, noseW: noseW, noseL: noseL,
+    mouthW: mouthW, lipFull: lipFull, browGap: browGap,
     facePx: W
   };
 }
@@ -1162,6 +1315,9 @@ var scanner = (function(){
     video.srcObject = null;
     frame.classList.remove("has-face");
     document.getElementById("scan-result").style.display = "none";
+    document.getElementById("scan-stage").style.display = "";
+    document.querySelector("#view-scan .view-head").style.display = "";
+    document.getElementById("report").classList.remove("manual");
     setState("channels");
   }
 
@@ -1177,25 +1333,167 @@ var scanner = (function(){
 })();
 
 /* ---------- reveal result ---------- */
+var COURTS = [
+  { k:"up",  zh:"天庭", name:"Upper court", when:"early years" },
+  { k:"mid", zh:"中停", name:"Middle court", when:"working middle" },
+  { k:"low", zh:"地阁", name:"Lower court", when:"later chapter" }
+];
+
+var COURT_READ = {
+  upper:"Your upper court leads, so this read puts <b>range and curiosity</b> ahead of execution. You start wide, gather options, and commit only once the shape is clear. Watch for the gathering becoming the work — give yourself a date to decide.",
+  middle:"Your middle court leads, so this read runs on <b>drive and execution</b>. You move early and correct in motion; the cost is grinding on things that stopped deserving it. Set the exit review before you need one.",
+  lower:"Your lower court leads, so this read leans on <b>staying power and accumulated standing</b>. You compound quietly and get better with time; the risk is waiting for permission. Ship the visible version sooner than feels comfortable."
+};
+
+var REGION_KEY = { upper:"up", middle:"mid", lower:"low" };
+
+function courtBars(m, region){
+  var lead = REGION_KEY[region] || "mid";
+  return COURTS.map(function(c){
+    var pct = Math.round((m[c.k] || 0) * 100);
+    return '<div class="court' + (c.k === lead ? " lead" : "") + '">' +
+      '<div class="court-top">' +
+        '<span class="court-name"><i>' + c.zh + '</i>' + c.name + '</span>' +
+        '<span class="court-when">' + c.when + '</span>' +
+        '<span class="court-pct">' + pct + '%</span>' +
+      '</div>' +
+      '<div class="court-track"><div class="court-fill" data-w="' + pct + '"></div></div>' +
+    '</div>';
+  }).join("");
+}
+
+/* five features — temperament only, never a rating of looks */
+function featureRows(m){
+  var rows = [];
+  function feat(zh, name, chip, text){
+    rows.push('<div class="feat"><div class="feat-badge">' + zh + '</div><div>' +
+      '<div class="feat-hd"><span class="fn">' + name + '</span><span class="fc">' + chip + '</span></div>' +
+      '<div class="feat-tx">' + text + "</div></div></div>");
+  }
+
+  /* 眉 — character (brow width relative to the jaw, not absolute size) */
+  var brow = m.foreFace / (m.jawFace || 1);
+  feat("眉", "Brow · character", "brow/jaw " + brow.toFixed(2),
+    brow > 1.14
+      ? "Wide span. You take in more than you announce and write almost nobody off early. <b>Decides late, defends long.</b>"
+      : brow < 1.00
+        ? "Tight span. You filter hard before committing and carry <b>low tolerance for noise</b>. Say the first draft out loud — you over-edit in private."
+        : "Even span. You gather, then commit — <b>openness and focus in balance</b>.");
+
+  /* 眼 — inner nature */
+  var ap = m.eyeAspect;
+  feat("眼", "Eyes · inner nature", "aperture " + ap.toFixed(2),
+    ap > 0.35
+      ? "Open aperture. You read a room before it finishes and answer fast — <b>expressive, warm first</b>. Your first reaction is usually the honest one."
+      : ap < 0.27
+        ? "Level aperture. You watch longer than you speak — <b>steady, hard to rush</b>. People mistake the quiet for agreement; correct them."
+        : "Steady aperture — <b>present without broadcasting</b>.");
+
+  /* 鼻 — wealth (summary; detail below) */
+  var nw = m.noseW;
+  feat("鼻", "Nose · wealth palace", "width " + nw.toFixed(2),
+    nw > 0.29
+      ? "Broad base — you open <b>several doors at once</b> and can hold risk while the outcome settles."
+      : nw < 0.245
+        ? "Narrow base — you run <b>one channel at a time</b> and guard the margin. Slow, then sudden."
+        : "Measured base — you widen only when the margin is proven.");
+
+  /* 口 — expression */
+  var mw = m.mouthW;
+  feat("口", "Mouth · expression", "line " + mw.toFixed(2),
+    mw > 0.46
+      ? "Broad line. You persuade with warmth and momentum — <b>saying it out loud is your edge</b>."
+      : mw < 0.40
+        ? "Finely drawn line. You persuade with precision — <b>fewer words, better placed</b>."
+        : "Balanced line. You speak when it moves something, and stay quiet when it won't.");
+
+  /* 耳 — honest gap */
+  feat("耳", "Ears · receptivity", "needs a profile",
+    "Not read here. Ears sit at the edge of a frontal frame and a guess would be worse than a gap — <b>a profile photo would add the fifth</b>.");
+
+  return rows.join("");
+}
+
+function wealthRead(m){
+  var nw = m.noseW, nl = m.noseL;
+  /* 0 = spreads wide, 1 = holds tight */
+  var spread = Math.max(0, Math.min(1, (0.34 - nw) / 0.12));
+  var points = [];
+  points.push(nl > 0.30
+    ? "<b>Longer horizon.</b> You plan past the current cycle — money tends to arrive late and large rather than early and small. Protect the patience; it is the asset."
+    : "<b>Near-term feel.</b> You work the next quarter better than the next decade. The leak is rarely one big loss — it is the small recurring one you stop noticing.");
+  points.push(nw > 0.29
+    ? "<b>Several streams.</b> Multiple small positions suit you better than one deep bet; you keep optionality without losing the thread."
+    : nw < 0.245
+      ? "<b>One clean channel.</b> A single defended line beats four half-managed ones — say no faster, and let compounding do the work."
+      : "<b>Selective widening.</b> You add a stream only after the current one proves itself — that instinct is worth trusting.");
+  points.push(nw > 0.29
+    ? "<b>Practice.</b> Cap open streams at three and review monthly — a wide appetite wins on optionality and quietly loses on maintenance."
+    : nw < 0.245
+      ? "<b>Practice.</b> Put one number on the wall and check it weekly — your instinct is to protect, so give it a target to protect toward."
+      : "<b>Practice.</b> Decide the next addition in advance, in writing. You widen well; you just need the trigger to be a rule, not a mood.");
+
+  return {
+    left: Math.round(spread * 100),
+    text: "Your nose carries <b>" + nw.toFixed(2) + "</b> of your face width and runs <b>" +
+          nl.toFixed(2) + "</b> of its length. In the classical read the nose is the wealth palace: " +
+          "not how much will land on you, but <b>how you meet opportunity and how long you can hold it</b>.",
+    points: points,
+    foot: "The wealth palace reads appetite and retention — how wide you open, how long you can wait. Not a number, not a promise."
+  };
+}
+
 function revealFace(result, m){
   state.face = result.element;
   var el = ELEMENTS[result.element];
+  var report = document.getElementById("report");
+
   document.getElementById("face-el-char").textContent = el.char;
   document.getElementById("face-el-name").textContent = el.name;
   document.getElementById("hook-el").textContent = result.element;
+
   if(result.manual){
+    report.classList.add("manual");
     document.getElementById("face-el-sub").textContent = "The Face · Self-reported";
-    document.getElementById("face-measure").textContent = "Shape chosen by you · not measured on device";
+    document.getElementById("face-measure").innerHTML = '<span>shape chosen by you</span><span>no measurement</span>';
+    document.getElementById("face-traits").innerHTML =
+      el.base.map(function(t){ return "<li>" + t + "</li>"; }).join("");
   } else {
-    document.getElementById("face-el-sub").textContent = "The Face · Mien Scan";
-    document.getElementById("face-measure").textContent =
-      "L/W " + m.lw.toFixed(2) + " · jaw/W " + m.jawFace.toFixed(2) + " · " + result.region + "-led regions";
+    report.classList.remove("manual");
+    document.getElementById("face-el-sub").textContent = "Measured on device · Mien Scan";
+    document.getElementById("face-measure").innerHTML =
+      '<span>L/W ' + m.lw.toFixed(2) + "</span>" +
+      '<span>jaw/W ' + m.jawFace.toFixed(2) + "</span>" +
+      '<span>nose/W ' + m.noseW.toFixed(2) + "</span>";
+    document.getElementById("face-traits").innerHTML = "";
+
+    document.getElementById("courts").innerHTML = courtBars(m, result.region);
+    document.getElementById("courts-read").innerHTML = COURT_READ[result.region] || "";
+    document.getElementById("features").innerHTML = featureRows(m);
+
+    var w = wealthRead(m);
+    document.getElementById("wealth-read").innerHTML = w.text;
+    document.getElementById("wealth-points").innerHTML =
+      w.points.map(function(p){ return "<li>" + p + "</li>"; }).join("");
+    document.getElementById("wealth-foot").innerHTML = w.foot;
+    document.getElementById("w-dot").style.left = w.left + "%";
   }
-  var traits = el.base.concat(result.manual ? [] : REGIONS[result.region]);
-  document.getElementById("face-traits").innerHTML = traits.map(function(t){ return "<li>"+t+"</li>"; }).join("");
+
+  /* the frozen frame has served its purpose — the report takes the screen */
+  document.getElementById("scan-stage").style.display = "none";
+  document.querySelector("#view-scan .view-head").style.display = "none";
+
   var r = document.getElementById("scan-result");
   r.style.display = "block";
-  r.scrollIntoView({behavior:"smooth", block:"nearest"});
+
+  if(!result.manual){
+    /* bars animate from zero: the container must be visible and laid out first */
+    void r.offsetHeight;
+    var fills = document.querySelectorAll(".court-fill");
+    for(var i=0;i<fills.length;i++) fills[i].style.width = fills[i].getAttribute("data-w") + "%";
+  }
+
+  r.scrollIntoView({behavior:"smooth", block:"start"});
 }
 
 /* ============================================================
