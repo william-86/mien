@@ -572,8 +572,17 @@ footer.site a:hover{color:var(--ink);}
 /* ---------- CONFIG (calibratable thresholds — see README-deploy.md) ---------- */
 var CONFIG = {
   FORM_ENDPOINT: "", /* paste your Formspree endpoint, e.g. "https://formspree.io/f/xxxxxxx" — empty = local-only mode */
-  MP_CDN: "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.0.1",
-  MP_MODEL: "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task",
+  /* engine runtime: first entry is the default, the rest are fallbacks (blocked CDNs are common in CN) */
+  MP_CDNS: [
+    "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.0.1",
+    "https://fastly.jsdelivr.net/npm/@mediapipe/tasks-vision@1.0.1",
+    "https://unpkg.com/@mediapipe/tasks-vision@1.0.1"
+  ],
+  /* model: same-origin copy first (always reachable — it ships with the site), GCS as fallback */
+  MP_MODELS: [
+    "models/face_landmarker.task",
+    "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task"
+  ],
   TH: {
     lwWood: 1.42,     /* face length/width above → Wood-leaning */
     lwRound: 1.28,    /* below → round-leaning */
@@ -750,16 +759,55 @@ var scanner = (function(){
   function ensureLoaded(){
     if(landmarker) return Promise.resolve(landmarker);
     if(loading) return loading;
-    loading = new Promise(function(resolve, reject){
-      import(CONFIG.MP_CDN + "/vision_bundle.mjs").then(function(m){
-        return m.FilesetResolver.forVisionTasks(CONFIG.MP_CDN + "/wasm").then(function(vision){
-          return m.FaceLandmarker.createFromOptions(vision, {
-            baseOptions:{ modelAssetPath: CONFIG.MP_MODEL, delegate:"GPU" },
-            runningMode:"VIDEO", numFaces:1
-          });
+
+    var lastErr = null;
+    function fail(code){
+      var e = new Error(code); e.code = code; e.cause = lastErr; return e;
+    }
+
+    /* one model source + one delegate → FaceLandmarker */
+    function createWith(m, vision, modelUrl, delegate){
+      return m.FaceLandmarker.createFromOptions(vision, {
+        baseOptions:{ modelAssetPath: modelUrl, delegate: delegate },
+        runningMode:"VIDEO", numFaces:1
+      });
+    }
+
+    /* try every model source; on each, try GPU then fall back to CPU
+       (GPU needs WebGL — disabled hardware acceleration breaks it silently) */
+    function tryModels(m, vision, idx){
+      if(idx >= CONFIG.MP_MODELS.length) return Promise.reject(fail("MODEL"));
+      var url = CONFIG.MP_MODELS[idx];
+      return createWith(m, vision, url, "GPU").catch(function(e1){
+        lastErr = e1;
+        return createWith(m, vision, url, "CPU");
+      }).catch(function(e2){
+        lastErr = e2;
+        return tryModels(m, vision, idx + 1);
+      });
+    }
+
+    /* try every CDN base for the wasm runtime */
+    function tryCdn(idx){
+      if(idx >= CONFIG.MP_CDNS.length) return Promise.reject(fail("CDN"));
+      var base = CONFIG.MP_CDNS[idx];
+      return import(base + "/vision_bundle.mjs").then(function(m){
+        return m.FilesetResolver.forVisionTasks(base + "/wasm").then(function(vision){
+          return tryModels(m, vision, 0);
         });
-      }).then(function(lm){ landmarker = lm; resolve(lm); })
-        .catch(function(err){ loading = null; reject(err); });
+      }).catch(function(e){
+        if(e && e.code === "MODEL") return Promise.reject(e); /* model is CDN-independent — don't re-import */
+        lastErr = e;
+        return tryCdn(idx + 1);
+      });
+    }
+
+    loading = tryCdn(0).then(function(lm){
+      landmarker = lm;
+      return lm;
+    }).catch(function(e){
+      loading = null;            /* allow retry on next attempt */
+      throw e.code ? e : fail("CDN");
     });
     return loading;
   }
@@ -779,6 +827,8 @@ var scanner = (function(){
     }).catch(function(err){
       if(err && (err.name==="NotAllowedError" || err.name==="PermissionDeniedError")){
         toast("Camera blocked — no problem. Upload a photo instead.");
+      }else if(err && (err.code==="MODEL" || err.code==="CDN")){
+        toast("The face reader couldn't load. Check your network (a VPN may be needed), then retry.");
       }else{
         toast("Couldn't start the reader. Try uploading a photo.");
       }
@@ -807,27 +857,59 @@ var scanner = (function(){
   }
 
   /* ---- upload channel ---- */
+  function isHeic(file){
+    return /heic|heif/.test(file.type || "") || /\.(heic|heif)$/i.test(file.name || "");
+  }
+  /* decode through ImageBitmap, fall back to <img> (wider format tolerance) */
+  function decodeImage(file){
+    return createImageBitmap(file).catch(function(){
+      return new Promise(function(resolve, reject){
+        var url = URL.createObjectURL(file), img = new Image();
+        img.onload = function(){ URL.revokeObjectURL(url); resolve(img); };
+        img.onerror = function(){
+          URL.revokeObjectURL(url);
+          var e = new Error("DECODE"); e.code = "DECODE"; reject(e);
+        };
+        img.src = url;
+      });
+    });
+  }
+
   function uploadFile(file){
-    if(!file || !/^image\//.test(file.type)){ toast("Please choose an image file."); return; }
+    if(!file) return;
+    var looksImage = /^image\//.test(file.type || "") || /\.(jpe?g|png|webp|avif|bmp)$/i.test(file.name || "");
+    if(!looksImage){ toast("Please choose an image file (JPG or PNG)."); return; }
+    if(isHeic(file)){
+      toast("HEIC photos can't be read in a browser — export as JPG or screenshot it, then retry.");
+      return;
+    }
     liveStatus.textContent = "";
     toast("Reading your photo…");
     ensureLoaded().then(function(){
-      return createImageBitmap(file);
-    }).then(function(bmp){
+      return decodeImage(file);
+    }).then(function(src){
       /* VIDEO-mode engine throughout — feed the still through detectForVideo */
-      var res;
-      try{ res = landmarker.detectForVideo(bmp, performance.now()); }
-      catch(e){ throw e; }
+      var res = landmarker.detectForVideo(src, performance.now());
       if(!res || !res.faceLandmarks || !res.faceLandmarks.length){
         toast("No face detected — try a clearer, front-facing photo.");
         resetChannels(); return;
       }
       var lm = res.faceLandmarks[0];
-      var m = measure(lm, bmp.width, bmp.height);
+      var w = src.width || src.naturalWidth, h = src.height || src.naturalHeight;
+      var m = measure(lm, w, h);
       if(m.facePx < 40){ toast("Face too small in the photo — move closer."); resetChannels(); return; }
-      finish(lm, bmp.width, bmp.height, bmp);
-    }).catch(function(){
-      toast("Couldn't load the reader — check your connection and retry.");
+      finish(lm, w, h, src);
+    }).catch(function(err){
+      var code = err && err.code;
+      if(code === "MODEL"){
+        toast("The face reader couldn't load. Check your network (a VPN may be needed), then retry.");
+      } else if(code === "CDN"){
+        toast("The face engine was blocked by your network. Try another browser or a VPN, then retry.");
+      } else if(code === "DECODE"){
+        toast("Couldn't read that image — please use a JPG or PNG.");
+      } else {
+        toast("Couldn't read that photo. Try another one.");
+      }
       resetChannels();
     });
   }
