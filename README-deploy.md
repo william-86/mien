@@ -15,6 +15,19 @@ mien-web/
 
 ---
 
+## 〇、当前线上地址（GitHub Pages，已发布）
+
+**https://william-86.github.io/mien/**
+
+- 仓库：https://github.com/william-86/mien （public，`main` 分支根目录发布）
+- 隐私政策：https://william-86.github.io/mien/privacy.html
+- 已实测：扫脸 → 五行判定、八字排盘（2000-01-01 12:00 → 庚辰/戊子/戊午/戊午）、分享卡均正常
+- 更新发布：在 `mien-web/` 内 `git add -A && git commit -m "..." && git push`，Pages 约 1 分钟自动重建
+
+> 注意：GitHub Pages 是 `https://`，摄像头 `getUserMedia` 可按要求工作；但域名带 `/mien/` 子路径，**所有资源引用必须保持相对路径**（当前代码已满足）。
+
+---
+
 ## 一、部署到 Vercel（5 分钟）
 
 **方式 A（推荐，命令行）：**
