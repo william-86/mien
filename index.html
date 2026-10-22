@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="mien-build" content="b10-21.10">
+<meta name="mien-build" content="b10-22.1">
 <title>Mien — Your face first. Your fate next.</title>
 <meta name="description" content="Mien reads your face through the 3,000-year-old Chinese art of physiognomy — then your birth chart through BaZi. Frames processed on your device. Never uploaded.">
 <meta property="og:title" content="Mien — Your face first. Your fate next.">
@@ -310,6 +310,21 @@ footer.site a:hover{color:var(--ink);}
 .rp-fine{
   font-size:11.5px;color:var(--faint);line-height:1.75;margin:20px 0 4px;
   padding-left:12px;border-left:1px solid var(--line);
+}
+
+/* long-form reading */
+.full-reading{margin-top:34px;padding-top:24px;border-top:1px solid var(--line);}
+.fr-lede{font-size:13px;color:var(--muted);line-height:1.7;margin:-4px 0 16px;}
+.fr-body{margin-top:26px;animation:rise .4s ease both;}
+.fr-body h4{
+  font-family:var(--serif);font-style:italic;font-size:16.5px;font-weight:700;
+  margin:26px 0 8px;color:var(--ink);letter-spacing:-.01em;
+}
+.fr-body h4:first-child{margin-top:0;}
+.fr-body p{font-size:14px;line-height:1.85;color:#C2BDB2;margin:0 0 4px;}
+.fr-note{
+  font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--faint);margin-top:22px;padding-top:14px;border-top:1px solid rgba(42,46,54,.8);
 }
 
 /* quiet mid-funnel link — visible enough to catch scanners, not loud enough to compete */
@@ -639,6 +654,18 @@ footer.site a:hover{color:var(--ink);}
           <p class="w-foot" id="wealth-foot"></p>
         </section>
 
+        <!-- long-form reading, composed on demand -->
+        <section class="full-reading" id="full-reading">
+          <div class="rp-bhead">
+            <span class="rp-zh">详解</span>
+            <h3>The full reading</h3>
+            <span class="rp-tag" id="fr-meta"></span>
+          </div>
+          <p class="fr-lede">Everything above, read as one piece — your element, the three courts, five features, and the decade map.</p>
+          <button class="btn btn-ghost btn-block" id="fr-toggle">Open the full reading</button>
+          <div class="fr-body" id="fr-body" hidden></div>
+        </section>
+
         <div class="hook">
           <p>Your face reads <span id="hook-el">Water</span>.<br>What does your birth chart say?</p>
           <button class="btn btn-primary" data-goto="chart">Read my BaZi</button>
@@ -764,6 +791,7 @@ footer.site a:hover{color:var(--ink);}
 
 <div class="toast" id="toast"></div>
 
+<script src="reading.js"></script>
 <script>
 /* ============================================================
    MIEN · deployable MVP
@@ -797,7 +825,7 @@ var CONFIG = {
 };
 
 /* build stamp — bump on every deploy so errors in the wild are traceable */
-var BUILD = "b10-21.10";
+var BUILD = "b10-22.1";
 try{ console.log("[Mien] build " + BUILD); }catch(e){}
 
 /* ---------- attribution (UTM) ---------- */
@@ -1461,6 +1489,11 @@ function wealthRead(m){
 
 function revealFace(result, m){
   state.face = result.element;
+  state.region = result.region;
+  state.metrics = result.manual ? null : m;
+  state.manual = !!result.manual;
+  resetFullReading();
+
   var el = ELEMENTS[result.element];
   var report = document.getElementById("report");
 
@@ -1513,9 +1546,57 @@ function revealFace(result, m){
 }
 
 /* ============================================================
+   LONG-FORM READING · composed from the measured proportions
+   ============================================================ */
+var frBuilt = false;
+
+function resetFullReading(){
+  var body = document.getElementById("fr-body");
+  var btn = document.getElementById("fr-toggle");
+  if(body){ body.innerHTML = ""; body.hidden = true; }
+  if(btn){ btn.style.display = ""; btn.textContent = "Open the full reading"; }
+  var meta = document.getElementById("fr-meta");
+  if(meta) meta.textContent = "";
+  frBuilt = false;
+}
+
+function buildFullReading(){
+  var body = document.getElementById("fr-body");
+  if(!body) return;
+  if(!window.MIEN_READING || !state.face){
+    body.innerHTML = '<p class="fr-note">The full reading needs a face reading first.</p>';
+    return;
+  }
+  var chartEl = state.chart && state.chart.dm ? state.chart.dm.e : null;
+  var out = window.MIEN_READING.build({
+    element: state.face,
+    region: state.region,
+    m: state.metrics,
+    manual: !!state.manual,
+    chart: chartEl ? { element: chartEl } : null
+  });
+
+  body.innerHTML = out.sections.map(function(s){
+    return "<h4>" + s.h + "</h4><p>" + s.body + "</p>";
+  }).join("") +
+    '<p class="fr-note">Composed on your device · ' + out.words + " words · " + out.minutes +
+    " min read · framework: five elements, three courts, five features · reflection, not prediction</p>";
+
+  document.getElementById("fr-meta").textContent = "≈" + out.words + " words · " + out.minutes + " min";
+  frBuilt = true;
+}
+
+document.getElementById("fr-toggle").addEventListener("click", function(){
+  var body = document.getElementById("fr-body");
+  body.hidden = false;
+  this.style.display = "none";
+  buildFullReading();
+});
+
+/* ============================================================
    BAZI CHART ENGINE (validated in prototype: 2000-01-01 → 庚辰/戊子/戊午/戊午)
    ============================================================ */
-var state = { face:null, chart:null };
+var state = { face:null, chart:null, region:null, metrics:null, manual:false };
 
 var STEMS = [
   {c:"甲",p:"jiǎ",e:"Wood",yang:true,persona:"The Tree",desc:"Upright and unbending — you grow toward the light and rarely bend for anyone."},
@@ -1645,6 +1726,7 @@ document.getElementById("chart-form").addEventListener("submit", function(e){
   }
   state.chart = castChart(y,mo,d,hour,min);
   renderChart();
+  if(frBuilt) buildFullReading();   /* face + chart pairing appears once the chart exists */
 });
 
 function renderChart(){
