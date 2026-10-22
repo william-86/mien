@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="mien-build" content="b10-21.9">
+<meta name="mien-build" content="b10-21.10">
 <title>Mien — Your face first. Your fate next.</title>
 <meta name="description" content="Mien reads your face through the 3,000-year-old Chinese art of physiognomy — then your birth chart through BaZi. Frames processed on your device. Never uploaded.">
 <meta property="og:title" content="Mien — Your face first. Your fate next.">
@@ -312,9 +312,20 @@ footer.site a:hover{color:var(--ink);}
   padding-left:12px;border-left:1px solid var(--line);
 }
 
+/* quiet mid-funnel link — visible enough to catch scanners, not loud enough to compete */
+.mid-cta{text-align:center;margin-top:26px;}
+.mid-cta-link{
+  font-family:var(--mono);font-size:10px;letter-spacing:.16em;text-transform:uppercase;
+  color:var(--muted);border-bottom:1px solid var(--line);padding-bottom:3px;
+  transition:color .2s,border-color .2s;
+}
+.mid-cta-link:hover{color:var(--seal-hi);border-color:rgba(200,69,44,.6);}
+.mid-cta-link span{margin-left:5px;}
+
 /* self-reported variant */
 .report .traits{display:none;}
 .report.manual .rp-block,
+.report.manual .mid-cta,
 .report.manual .wealth{display:none;}
 .report.manual .traits{display:block;text-align:left;margin-top:20px;}
 .report.manual .traits li{
@@ -607,6 +618,11 @@ footer.site a:hover{color:var(--ink);}
           <div class="features" id="features"></div>
         </section>
 
+        <!-- mid-funnel escape hatch: quiet link so the wealth section still gets read -->
+        <div class="mid-cta">
+          <button class="mid-cta-link" data-goto="chart">Skip ahead — cast my BaZi chart <span aria-hidden="true">→</span></button>
+        </div>
+
         <!-- 财帛宫 -->
         <section class="wealth" id="wealth">
           <div class="rp-bhead">
@@ -781,7 +797,7 @@ var CONFIG = {
 };
 
 /* build stamp — bump on every deploy so errors in the wild are traceable */
-var BUILD = "b10-21.9";
+var BUILD = "b10-21.10";
 try{ console.log("[Mien] build " + BUILD); }catch(e){}
 
 /* ---------- attribution (UTM) ---------- */
